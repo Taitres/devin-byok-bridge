@@ -1,17 +1,17 @@
 {
-  "name": "windsurf-byok-bridge",
-  "displayName": "Windsurf BYOK Bridge",
-  "description": "Windsurf BYOK 桥接 — 本地 API Key，多模型路由",
-  "version": "1.0.0",
+  "name": "devin-byok-bridge",
+  "displayName": "Devin BYOK Bridge",
+  "description": "Devin Desktop BYOK 桥接 — 本地 API Key，多模型路由（兼容旧版 Windsurf）",
+  "version": "1.1.0",
   "publisher": "ycx932436",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ycx932436/windsurf-byok-bridge.git"
+    "url": "https://github.com/ycx932436/devin-byok-bridge.git"
   },
-  "homepage": "https://github.com/ycx932436/windsurf-byok-bridge",
+  "homepage": "https://github.com/ycx932436/devin-byok-bridge",
   "bugs": {
-    "url": "https://github.com/ycx932436/windsurf-byok-bridge/issues"
+    "url": "https://github.com/ycx932436/devin-byok-bridge/issues"
   },
   "engines": {
     "vscode": "^1.85.0"
@@ -21,24 +21,24 @@
   ],
   "activationEvents": [
     "onStartupFinished",
-    "onView:windsurf-byok-bridge.sidebar"
+    "onView:devin-byok-bridge.sidebar"
   ],
   "main": "./extension.js",
   "contributes": {
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "windsurf-byok-bridge",
-          "title": "Windsurf BYOK Bridge",
+          "id": "devin-byok-bridge",
+          "title": "Devin BYOK Bridge",
           "icon": "media/icon.svg"
         }
       ]
     },
     "views": {
-      "windsurf-byok-bridge": [
+      "devin-byok-bridge": [
         {
           "type": "webview",
-          "id": "windsurf-byok-bridge.sidebar",
+          "id": "devin-byok-bridge.sidebar",
           "name": "控制面板",
           "icon": "media/icon.svg"
         }
@@ -46,24 +46,24 @@
     },
     "commands": [
       {
-        "command": "windsurf-byok-bridge.startProxy",
-        "title": "Windsurf BYOK Bridge: 启动代理"
+        "command": "devin-byok-bridge.startProxy",
+        "title": "Devin BYOK Bridge: 启动代理"
       },
       {
-        "command": "windsurf-byok-bridge.stopProxy",
-        "title": "Windsurf BYOK Bridge: 停止代理"
+        "command": "devin-byok-bridge.stopProxy",
+        "title": "Devin BYOK Bridge: 停止代理"
       },
       {
-        "command": "windsurf-byok-bridge.applyPatch",
-        "title": "Windsurf BYOK Bridge: 安装补丁"
+        "command": "devin-byok-bridge.applyPatch",
+        "title": "Devin BYOK Bridge: 安装补丁"
       },
       {
-        "command": "windsurf-byok-bridge.revertPatch",
-        "title": "Windsurf BYOK Bridge: 还原补丁"
+        "command": "devin-byok-bridge.revertPatch",
+        "title": "Devin BYOK Bridge: 还原补丁"
       },
       {
-        "command": "windsurf-byok-bridge.reloadWorkbench",
-        "title": "Windsurf BYOK Bridge: 重载窗口（补丁生效）"
+        "command": "devin-byok-bridge.reloadWorkbench",
+        "title": "Devin BYOK Bridge: 重载窗口（补丁生效）"
       }
     ]
   }

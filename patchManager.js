@@ -196,20 +196,44 @@ class PatchManager {
     PatchManager.addCandidate(_0x45e546, path.join(_0x1529f2, "extensions", "windsurf", "dist", "extension.js"));
     PatchManager.addCandidate(_0x45e546, path.join(_0x1529f2, "dist", "extension.js"));
   }
+  static resolveBackupPath(_0x11b4ae) {
+    const _0xdevin = _0x11b4ae + ".devin-bak";
+    const _0xlegacy = _0x11b4ae + ".windsurf-bak";
+    if (fs.existsSync(_0xdevin)) {
+      return _0xdevin;
+    }
+    if (fs.existsSync(_0xlegacy)) {
+      return _0xlegacy;
+    }
+    return _0xdevin;
+  }
+  static resolveExistingBackupPath(_0x11b4ae) {
+    const _0xdevin = _0x11b4ae + ".devin-bak";
+    const _0xlegacy = _0x11b4ae + ".windsurf-bak";
+    if (fs.existsSync(_0xdevin)) {
+      return _0xdevin;
+    }
+    if (fs.existsSync(_0xlegacy)) {
+      return _0xlegacy;
+    }
+    return null;
+  }
   static addWindowsProcessCandidates(_0x434b58) {
     if (process.platform !== "win32") {
       return;
     }
-    try {
-      const _0x49d2a2 = (0, child_process_1.execFileSync)("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "Get-CimInstance Win32_Process -Filter \"name='Windsurf.exe'\" | Select-Object -ExpandProperty ExecutablePath"], {
-        encoding: "utf8",
-        windowsHide: true,
-        timeout: 2500
-      });
-      for (const _0x7e1fca of _0x49d2a2.split(/\r?\n/).map(_0x4d39c5 => _0x4d39c5.trim()).filter(Boolean)) {
-        PatchManager.addInstallRootCandidates(_0x434b58, path.dirname(_0x7e1fca));
-      }
-    } catch {}
+    for (const _0xprocName of ["Devin.exe", "Windsurf.exe"]) {
+      try {
+        const _0x49d2a2 = (0, child_process_1.execFileSync)("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "Get-CimInstance Win32_Process -Filter \"name='" + _0xprocName + "'\" | Select-Object -ExpandProperty ExecutablePath"], {
+          encoding: "utf8",
+          windowsHide: true,
+          timeout: 2500
+        });
+        for (const _0x7e1fca of _0x49d2a2.split(/\r?\n/).map(_0x4d39c5 => _0x4d39c5.trim()).filter(Boolean)) {
+          PatchManager.addInstallRootCandidates(_0x434b58, path.dirname(_0x7e1fca));
+        }
+      } catch {}
+    }
   }
   static addWindowsShortcutCandidates(_0x42cf2e) {
     if (process.platform !== "win32") {
@@ -224,7 +248,7 @@ class PatchManager {
         continue;
       }
       try {
-        const _0x3d9e3 = (0, child_process_1.execFileSync)("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "$shell=New-Object -ComObject WScript.Shell; Get-ChildItem -LiteralPath " + JSON.stringify(_0x21720d) + " -Recurse -Filter *.lnk -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'Windsurf' } | ForEach-Object { $shell.CreateShortcut($_.FullName).TargetPath }"], {
+        const _0x3d9e3 = (0, child_process_1.execFileSync)("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "$shell=New-Object -ComObject WScript.Shell; Get-ChildItem -LiteralPath " + JSON.stringify(_0x21720d) + " -Recurse -Filter *.lnk -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'Devin|Windsurf' } | ForEach-Object { $shell.CreateShortcut($_.FullName).TargetPath }"], {
           encoding: "utf8",
           windowsHide: true,
           timeout: 3500
@@ -272,7 +296,7 @@ class PatchManager {
           continue;
         }
         const _0x2d7652 = _0x20490d.name.toLowerCase();
-        if (!_0x2d7652.includes("windsurf") && !_0x2d7652.includes("codeium")) {
+        if (!_0x2d7652.includes("windsurf") && !_0x2d7652.includes("codeium") && !_0x2d7652.includes("devin")) {
           continue;
         }
         _0x595b69.push({
@@ -286,18 +310,21 @@ class PatchManager {
     const _0x2cfa11 = [];
     PatchManager.addAppRootCandidates(_0x2cfa11);
     if (process.platform === "darwin") {
+      PatchManager.addCandidate(_0x2cfa11, "/Applications/Devin.app/Contents/Resources/app/extensions/windsurf/dist/extension.js");
       PatchManager.addCandidate(_0x2cfa11, "/Applications/Windsurf.app/Contents/Resources/app/extensions/windsurf/dist/extension.js");
       const _0x5e72e3 = process.env.HOME || "";
       if (_0x5e72e3) {
-        const _0x30906a = path.join(_0x5e72e3, "Library", "Application Support", "Windsurf", "extensions");
-        if (fs.existsSync(_0x30906a)) {
-          try {
-            for (const _0x279bff of fs.readdirSync(_0x30906a)) {
-              if (_0x279bff.startsWith("windsurf-")) {
-                PatchManager.addCandidate(_0x2cfa11, path.join(_0x30906a, _0x279bff, "dist", "extension.js"));
+        for (const _0xappSupport of ["Devin", "Windsurf"]) {
+          const _0x30906a = path.join(_0x5e72e3, "Library", "Application Support", _0xappSupport, "extensions");
+          if (fs.existsSync(_0x30906a)) {
+            try {
+              for (const _0x279bff of fs.readdirSync(_0x30906a)) {
+                if (_0x279bff.startsWith("windsurf-") || _0x279bff.startsWith("devin-")) {
+                  PatchManager.addCandidate(_0x2cfa11, path.join(_0x30906a, _0x279bff, "dist", "extension.js"));
+                }
               }
-            }
-          } catch {}
+            } catch {}
+          }
         }
       }
     }
@@ -307,33 +334,40 @@ class PatchManager {
       const _0x19bc7b = process.env.ProgramFiles || "C:\\Program Files";
       const _0x5ef441 = process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)";
       if (_0x496a86) {
-        PatchManager.addCandidate(_0x2cfa11, path.join(_0x496a86, "Programs", "Windsurf", "resources", "app", "extensions", "windsurf", "dist", "extension.js"));
-        PatchManager.addCandidate(_0x2cfa11, path.join(_0x496a86, "Programs", "windsurf", "resources", "app", "extensions", "windsurf", "dist", "extension.js"));
+        for (const _0xprod of ["Devin", "Windsurf", "devin", "windsurf"]) {
+          PatchManager.addCandidate(_0x2cfa11, path.join(_0x496a86, "Programs", _0xprod, "resources", "app", "extensions", "windsurf", "dist", "extension.js"));
+        }
         PatchManager.addDirectorySearchCandidates(_0x2cfa11, [path.join(_0x496a86, "Programs"), _0x496a86], 3);
       }
       PatchManager.addWindowsProcessCandidates(_0x2cfa11);
       PatchManager.addWindowsShortcutCandidates(_0x2cfa11);
       PatchManager.addDirectorySearchCandidates(_0x2cfa11, [_0x19bc7b, _0x5ef441], 3);
       for (const _0x576e17 of [_0x19bc7b, _0x5ef441]) {
-        PatchManager.addCandidate(_0x2cfa11, path.join(_0x576e17, "Windsurf", "resources", "app", "extensions", "windsurf", "dist", "extension.js"));
+        for (const _0xprod of ["Devin", "Windsurf"]) {
+          PatchManager.addCandidate(_0x2cfa11, path.join(_0x576e17, _0xprod, "resources", "app", "extensions", "windsurf", "dist", "extension.js"));
+        }
       }
       for (const _0x1201c2 of ["C", "D", "E", "F"]) {
-        PatchManager.addCandidate(_0x2cfa11, path.join(_0x1201c2 + ":", "Windsurf", "resources", "app", "extensions", "windsurf", "dist", "extension.js"));
-        PatchManager.addCandidate(_0x2cfa11, path.join(_0x1201c2 + ":", "windsurf", "resources", "app", "extensions", "windsurf", "dist", "extension.js"));
+        for (const _0xprod of ["Devin", "Windsurf", "devin", "windsurf"]) {
+          PatchManager.addCandidate(_0x2cfa11, path.join(_0x1201c2 + ":", _0xprod, "resources", "app", "extensions", "windsurf", "dist", "extension.js"));
+        }
       }
     }
     if (process.platform === "linux") {
       const _0x21f9ee = process.env.HOME || "";
       if (_0x21f9ee) {
-        const _0x1977f6 = path.join(_0x21f9ee, ".windsurf-server", "bin");
-        if (fs.existsSync(_0x1977f6)) {
-          try {
-            for (const _0x50f7aa of fs.readdirSync(_0x1977f6)) {
-              PatchManager.addCandidate(_0x2cfa11, path.join(_0x1977f6, _0x50f7aa, "extensions", "windsurf", "dist", "extension.js"));
-            }
-          } catch {}
+        for (const _0xserverDir of [".devin-server", ".windsurf-server"]) {
+          const _0x1977f6 = path.join(_0x21f9ee, _0xserverDir, "bin");
+          if (fs.existsSync(_0x1977f6)) {
+            try {
+              for (const _0x50f7aa of fs.readdirSync(_0x1977f6)) {
+                PatchManager.addCandidate(_0x2cfa11, path.join(_0x1977f6, _0x50f7aa, "extensions", "windsurf", "dist", "extension.js"));
+              }
+            } catch {}
+          }
         }
       }
+      PatchManager.addCandidate(_0x2cfa11, "/usr/share/devin/resources/app/extensions/windsurf/dist/extension.js");
       PatchManager.addCandidate(_0x2cfa11, "/usr/share/windsurf/resources/app/extensions/windsurf/dist/extension.js");
     }
     return _0x2cfa11.find(_0x4f9091 => fs.existsSync(_0x4f9091)) || null;
@@ -366,11 +400,11 @@ class PatchManager {
         applied: 0,
         skipped: 0,
         failed: 0,
-        details: ["找不到 Windsurf extension.js"]
+        details: ["找不到 Devin Desktop extension.js"]
       };
     }
-    const _0x4307f0 = _0x196a36 + ".windsurf-bak";
-    if (!fs.existsSync(_0x4307f0)) {
+    const _0x4307f0 = PatchManager.resolveBackupPath(_0x196a36);
+    if (!PatchManager.resolveExistingBackupPath(_0x196a36)) {
       fs.copyFileSync(_0x196a36, _0x4307f0);
     }
     let _0x301c50 = fs.readFileSync(_0x196a36, "utf-8");
@@ -417,8 +451,8 @@ class PatchManager {
     if (!_0x11b4ae) {
       return false;
     }
-    const _0x41fbc2 = _0x11b4ae + ".windsurf-bak";
-    if (!fs.existsSync(_0x41fbc2)) {
+    const _0x41fbc2 = PatchManager.resolveExistingBackupPath(_0x11b4ae);
+    if (!_0x41fbc2) {
       return false;
     }
     fs.copyFileSync(_0x41fbc2, _0x11b4ae);
@@ -471,15 +505,16 @@ class PatchManager {
         details: ["找不到 extension.js"]
       };
     }
-    const _0x56b772 = _0x4b658c + ".windsurf-bak";
-    if (!fs.existsSync(_0x56b772)) {
+    const _0x56b772 = PatchManager.resolveBackupPath(_0x4b658c);
+    const _0x36287f = PatchManager.resolveExistingBackupPath(_0x4b658c);
+    if (!_0x36287f) {
       fs.copyFileSync(_0x4b658c, _0x56b772);
     }
     let _0x23517a = fs.readFileSync(_0x4b658c, "utf-8");
-    const _0x36287f = fs.existsSync(_0x56b772) ? fs.readFileSync(_0x56b772, "utf-8") : null;
+    const _0x36287fContent = _0x36287f ? fs.readFileSync(_0x36287f, "utf-8") : fs.existsSync(_0x56b772) ? fs.readFileSync(_0x56b772, "utf-8") : null;
     const _0x4ac271 = getPatches().some(_0x3ede24 => PatchManager.isPatched(_0x23517a, _0x3ede24, _0x25c6c6, _0x167ced));
-    if (_0x4ac271 && _0x36287f) {
-      _0x23517a = _0x36287f;
+    if (_0x4ac271 && _0x36287fContent) {
+      _0x23517a = _0x36287fContent;
     }
     const _0x4b4efd = [];
     let _0x5306f7 = 0;

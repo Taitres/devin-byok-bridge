@@ -684,7 +684,7 @@
       _0x2ddc49("patch", "busy", "正在刷新补丁状态...");
       _0x28550f("refreshPatchStatus");
     } else if (_0x402468 === "locateExtJs") {
-      _0x2ddc49("patch", "busy", "请选择 Windsurf 的 extension.js...");
+      _0x2ddc49("patch", "busy", "请选择 Devin Desktop 的 extension.js...");
       _0x28550f("locateExtJs");
     } else if (_0x402468 === "clearExtJsPath") {
       _0x52a72b = "";

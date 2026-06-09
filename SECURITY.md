@@ -2,7 +2,7 @@
 
 ## Design Scope
 
-本工具**按本地单机、默认 `127.0.0.1` 绑定**设计。在此预期用法下：
+本工具**按本地单机、默认 `127.0.0.1` 绑定**设计，面向 **Devin Desktop**（原 Windsurf）。在此预期用法下：
 
 - API Key 与 `.env` 由用户在本机保管；
 - 配置与代理接口面向本机进程，**不**作为面向公网的服务交付。
@@ -13,7 +13,8 @@
 
 | Version | Supported |
 |---------|-----------|
-| 1.0.x   | ✅        |
+| 1.1.x   | ✅        |
+| 1.0.x   | ⚠️ 建议升级至 1.1.x（Devin Desktop 更名适配） |
 
 仅最新发布版本会收到安全修复。本项目尚未建立固定发布节奏；请使用仓库 `main` 分支最新代码。
 
@@ -23,7 +24,7 @@
 
 推荐方式（按优先级）：
 
-1. [GitHub Security Advisories — Private vulnerability report](https://github.com/ycx932436/windsurf-byok-bridge/security/advisories/new)
+1. [GitHub Security Advisories — Private vulnerability report](https://github.com/ycx932436/devin-byok-bridge/security/advisories/new)
 2. 若无法使用 Advisory，可开 Issue 并**仅描述复现步骤与影响**，附件中的日志须先脱敏
 
 我们会在合理时间内确认收到报告。由于本项目为社区维护、无 SLA，修复时间取决于严重程度与维护者可用性。
@@ -34,7 +35,7 @@
 
 - 用户自行配置的 API Key 泄露（例如提交 `.env` 到 Git）
 - 在**违背本地单机设计**的场景下暴露 `:3006` / `:3001`（如绑定公网、端口转发）导致的未授权访问
-- 违反 Windsurf / Codeium 服务条款或使用补丁修改客户端本身（见 [DISCLAIMER.md](DISCLAIMER.md)）
+- 违反 Devin Desktop / Codeium 服务条款或使用补丁修改客户端本身（见 [DISCLAIMER.md](DISCLAIMER.md)）
 - 上游模型网关（Anthropic、OpenAI、Google 等）的缺陷
 - 要求公开完整去混淆源码或逐行审计混淆实现本身
 
@@ -57,10 +58,10 @@
 - 证书目录已在 `.gitignore` 中排除；**切勿**上传私钥或分享给他人
 - 仅在可信的本机环境使用 MITM
 
-### 补丁与 Windsurf 文件
+### 补丁与 Devin Desktop 文件
 
-- 「安装补丁」会修改 Windsurf 安装目录内的 `extension.js`，并创建 `.windsurf-bak` 备份
-- 还原补丁前请确认备份完整；Windsurf 大版本升级后请重新评估补丁兼容性
+- 「安装补丁」会修改 Devin Desktop（或旧版 Windsurf）安装目录内的 `extension.js`，并创建 `.devin-bak` 备份（兼容 `.windsurf-bak`）
+- 还原补丁前请确认备份完整；IDE 大版本升级后请重新评估补丁兼容性
 
 ### 诊断报告
 

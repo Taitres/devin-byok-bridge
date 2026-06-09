@@ -1,6 +1,6 @@
 # 贡献指南
 
-感谢关注 **Windsurf BYOK Bridge**。本文档说明如何安全地参与本仓库，**不涉及源码实现细节**。
+感谢关注 **Devin BYOK Bridge**（原名 Windsurf BYOK Bridge）。本文档说明如何安全地参与本仓库，**不涉及源码实现细节**。
 
 ## 开始前请阅读
 
@@ -9,7 +9,7 @@
 
 ## 设计定位
 
-本项目**仅面向本地单机使用**（默认 `127.0.0.1`）。Issue 与 PR 请在此前提下描述问题。
+本项目**仅面向本地单机使用**（默认 `127.0.0.1`），适配 **Devin Desktop**（2026 年 6 月起由 Windsurf 更名），并兼容未升级的旧版 Windsurf 安装路径。Issue 与 PR 请在此前提下描述问题。
 
 ## 请勿提交的内容
 
@@ -41,11 +41,11 @@
 ### 文档
 
 - 修正 README、DISCLAIMER、SECURITY 中的错误或遗漏
-- 补充 FAQ、安装说明、兼容性说明
+- 补充 FAQ、安装说明、Devin Desktop 兼容性说明
 
 ### Issue
 
-- Bug：说明 Windsurf 版本、操作系统、复现步骤与期望行为
+- Bug：说明 Devin Desktop / Windsurf 版本、操作系统、复现步骤与期望行为
 - 功能建议：说明使用场景与限制
 - **勿**在公开 Issue 粘贴 API Key、`.env`、MITM 私钥或完整诊断报告
 
@@ -58,13 +58,13 @@
 
 ## 安全漏洞
 
-请通过 [GitHub Security Advisories](https://github.com/ycx932436/windsurf-byok-bridge/security/advisories/new) 私下报告，不要公开利用细节。
+请通过 [GitHub Security Advisories](https://github.com/ycx932436/devin-byok-bridge/security/advisories/new) 私下报告，不要公开利用细节。
 
 以下通常**不在**本仓库受理范围内（见 SECURITY.md）：
 
 - 用户自行将 `.env` 提交到 Git
 - 在**非设计场景**下将代理暴露到公网
-- 违反 Windsurf / Codeium 服务条款本身
+- 违反 Devin / Codeium 服务条款本身
 - 上游模型网关的缺陷
 
 ## 许可

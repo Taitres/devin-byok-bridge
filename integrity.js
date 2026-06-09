@@ -4,7 +4,8 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const DEVICE_ID_KEY = 'windsurf-byok-bridge.deviceId';
+const DEVICE_ID_KEY = 'devin-byok-bridge.deviceId';
+const LEGACY_DEVICE_ID_KEY = 'windsurf-byok-bridge.deviceId';
 
 function generateDeviceId() {
   const seed = [os.hostname(), os.platform(), os.arch(), os.cpus()[0]?.model ?? '', os.userInfo().username, os.homedir()].join('|');
@@ -13,6 +14,12 @@ function generateDeviceId() {
 
 function getDeviceId(context) {
   let id = context.globalState.get(DEVICE_ID_KEY);
+  if (!id) {
+    id = context.globalState.get(LEGACY_DEVICE_ID_KEY);
+    if (id) {
+      context.globalState.update(DEVICE_ID_KEY, id);
+    }
+  }
   if (!id) {
     id = generateDeviceId();
     context.globalState.update(DEVICE_ID_KEY, id);

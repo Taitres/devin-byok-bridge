@@ -64,7 +64,7 @@ const fs = __importStar(require("fs"));
 const net = __importStar(require("net"));
 const http = __importStar(require("http"));
 const http2 = __importStar(require("http2"));
-const KEY_HTTP_PROXY_BACKUP = "windsurf-byok-bridge.httpProxyBackup";
+const KEY_HTTP_PROXY_BACKUP = "devin-byok-bridge.httpProxyBackup";
 class ProxyManager {
   parsePort(_0x36321f, _0x5b0ff5) {
     const _0x5de7bc = Number.parseInt(String(_0x36321f || ""), 10);
@@ -80,11 +80,11 @@ class ProxyManager {
   getInferencePort(_0x4a52e1) {
     return this.parsePort(_0x4a52e1?.INFERENCE_PORT, 3001);
   }
-  async ensureWindsurfHttpProxySettings(_0x1f217e) {
-    await this.restoreWindsurfHttpProxySettings();
-    this.log("已跳过全局 http.proxy 同步；Windsurf API 请求仅通过补丁指向 http://localhost:" + _0x1f217e);
+  async ensureDevin DesktopHttpProxySettings(_0x1f217e) {
+    await this.restoreDevin DesktopHttpProxySettings();
+    this.log("已跳过全局 http.proxy 同步；Devin Desktop API 请求仅通过补丁指向 http://localhost:" + _0x1f217e);
   }
-  async restoreWindsurfHttpProxySettings() {
+  async restoreDevin DesktopHttpProxySettings() {
     const _0x34e78b = this.context.globalState.get(KEY_HTTP_PROXY_BACKUP);
     if (!_0x34e78b) {
       return;
@@ -97,7 +97,7 @@ class ProxyManager {
     await _0x3a7e95.update("proxy", _0x34e78b.hadProxy ? _0x34e78b.proxy : undefined, vscode.ConfigurationTarget.Global);
     await _0x3a7e95.update("proxyStrictSSL", _0x34e78b.hadProxyStrictSSL ? _0x34e78b.proxyStrictSSL : undefined, vscode.ConfigurationTarget.Global);
     await this.context.globalState.update(KEY_HTTP_PROXY_BACKUP, undefined);
-    this.log("已恢复 Windsurf HTTP 代理设置");
+    this.log("已恢复 Devin Desktop HTTP 代理设置");
   }
   portsFromConfig(_0x1950b6) {
     return {
@@ -122,7 +122,7 @@ class ProxyManager {
     this.proxyRoot = this.findProxyRoot();
     this.migrateLegacyEnvIfNeeded();
     this.statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-    this.statusBar.command = "windsurf-byok-bridge.startProxy";
+    this.statusBar.command = "devin-byok-bridge.startProxy";
     this.updateStatusBar();
     this.statusBar.show();
     _0x387ead.subscriptions.push(this.statusBar);
@@ -135,11 +135,11 @@ class ProxyManager {
       const _0xcf2ece = this.externalProxy ? "(共享)" : "";
       this.statusBar.text = "$(cloud) BYOK Bridge: 运行中" + _0xcf2ece;
       this.statusBar.tooltip = this.externalProxy ? "代理运行中 | 端口 " + _0x38820f + " | 来自其他窗口" : "Port " + _0x38820f + " | PID " + this.hybridProcess?.pid + " | " + this.requestCount + " 请求";
-      this.statusBar.command = "windsurf-byok-bridge.stopProxy";
+      this.statusBar.command = "devin-byok-bridge.stopProxy";
     } else {
       this.statusBar.text = "$(cloud) BYOK Bridge: 已停止";
       this.statusBar.tooltip = "点击启动代理 (Port " + _0x38820f + ")";
-      this.statusBar.command = "windsurf-byok-bridge.startProxy";
+      this.statusBar.command = "devin-byok-bridge.startProxy";
     }
   }
   findProxyRoot() {
@@ -168,7 +168,7 @@ class ProxyManager {
       if (fs.existsSync(_0x5a1c2b)) {
         return path.join(_0x198c80.uri.fsPath, "proxy-scripts");
       }
-      for (const _0x4f8e1d of ["windsurf-byok-bridge", "windsurf-proxy"]) {
+      for (const _0x4f8e1d of ["devin-byok-bridge", "windsurf-byok-bridge", "windsurf-proxy"]) {
         const _0x374bd9 = path.join(_0x198c80.uri.fsPath, _0x4f8e1d, "proxy-scripts", "src", "hybrid-server.js");
         if (fs.existsSync(_0x374bd9)) {
           return path.join(_0x198c80.uri.fsPath, _0x4f8e1d, "proxy-scripts");
@@ -208,17 +208,17 @@ class ProxyManager {
     }
     try {
       fs.copyFileSync(_0x53af75, _0xf8b751);
-      console.log("[Windsurf BYOK Bridge] 已迁移旧配置: " + _0x53af75 + " -> " + _0xf8b751);
+      console.log("[Devin BYOK Bridge] 已迁移旧配置: " + _0x53af75 + " -> " + _0xf8b751);
     } catch (_0x25561d) {
       const _0x319444 = _0x25561d instanceof Error ? _0x25561d.message : String(_0x25561d);
-      console.log("[Windsurf BYOK Bridge] 迁移旧配置失败: " + _0x319444);
+      console.log("[Devin BYOK Bridge] 迁移旧配置失败: " + _0x319444);
     }
   }
   onLog(_0x13fec2) {
     this.logCallback = _0x13fec2;
   }
   log(_0x1650ed) {
-    console.log("[Windsurf BYOK Bridge] " + _0x1650ed);
+    console.log("[Devin BYOK Bridge] " + _0x1650ed);
     this.logCallback?.("[" + new Date().toLocaleTimeString() + "] " + _0x1650ed);
   }
   getLastStartError() {
@@ -498,7 +498,7 @@ class ProxyManager {
     const _0x5bca7d = new Set(["ANTHROPIC_API_HOST", "ANTHROPIC_API_KEY", "ANTHROPIC_API_PATH", "OPENAI_API_HOST", "OPENAI_API_KEY", "OPENAI_API_PATH", "HYBRID_PORT", "INFERENCE_PORT", "DEFAULT_MODEL", "MAX_TOKENS", "OPENAI_REASONING_EFFORT", "OPENAI_THINKING_ENABLED", "COMPLETION_TIMEOUT_MS", "SYSTEM_PROMPT_OVERRIDE", "SYSTEM_PROMPT_PATH", "BYOK1_ANTHROPIC_API_HOST", "BYOK1_ANTHROPIC_API_KEY", "BYOK1_ANTHROPIC_API_PATH", "BYOK1_OPENAI_API_HOST", "BYOK1_OPENAI_API_KEY", "BYOK1_OPENAI_API_PATH", "BYOK1_MODEL", "BYOK1_THINKING_EFFORT", "BYOK2_ANTHROPIC_API_HOST", "BYOK2_ANTHROPIC_API_KEY", "BYOK2_ANTHROPIC_API_PATH", "BYOK2_OPENAI_API_HOST", "BYOK2_OPENAI_API_KEY", "BYOK2_OPENAI_API_PATH", "BYOK2_MODEL", "BYOK2_THINKING_EFFORT"]);
     const _0x22e545 = Object.entries(_0x8b3570).filter(([_0x1fbc86]) => !_0x5bca7d.has(_0x1fbc86) && /^[A-Za-z_][A-Za-z0-9_]*$/.test(_0x1fbc86)).map(([_0x548624, _0xf5e4e2]) => _0x548624 + "=" + _0xf5e4e2);
     const _0x35a380 = this.getSystemPromptConfigPath(_0x10f933);
-    const _0x11e587 = ["# Windsurf BYOK Bridge 配置（由扩展管理）"];
+    const _0x11e587 = ["# Devin BYOK Bridge 配置（由扩展管理）"];
     const _0xappendByok = (_0x736c12, _0x4e7f21) => {
       const _0x1e8039 = _0x10f933[_0x736c12 + "ANTHROPIC_API_HOST"] ? this.stripProtocol(_0x10f933[_0x736c12 + "ANTHROPIC_API_HOST"]) : "";
       _0x11e587.push("", "# ─── " + _0x4e7f21 + " ───");
@@ -832,7 +832,7 @@ class ProxyManager {
           this.log("共享代理配置同步失败: " + _0x2ae5cb.errors.join("; "));
         }
         this.updateStatusBar();
-        await this.ensureWindsurfHttpProxySettings(_0x1888fa);
+        await this.ensureDevin DesktopHttpProxySettings(_0x1888fa);
         return true;
       }
       const _0x420ff4 = this.getPortOccupantDetail(_0x1888fa);
@@ -859,7 +859,7 @@ class ProxyManager {
     this.hybridProcess.stdout?.on("data", _0x595e34 => {
       const _0x4b5706 = _0x595e34.toString().trim();
       if (_0x4b5706) {
-        if (_0x4b5706.includes("⚡ Windsurf BYOK Bridge hybrid on http://localhost:" + _0x1888fa)) {
+        if (_0x4b5706.includes("⚡ Devin BYOK Bridge hybrid on http://localhost:" + _0x1888fa)) {
           _0x10a9aa = true;
         }
         if (/⚡\s*(MITM\s+)?GetChatMessage\b/.test(_0x4b5706) || _0x4b5706.includes("GetStreamingCompletions") || _0x4b5706.includes("GetWebSearchResults") || _0x4b5706.includes("GetEmbeddings")) {
@@ -910,10 +910,10 @@ class ProxyManager {
     this.restartCount = 0;
     this.log("hybrid-server 已启动 (port " + _0x1888fa + ")");
     if (_0x1888fa !== 3006 || _0xf81a6c === "both" && _0x1c61f3 !== 3001) {
-      this.log("提示: 非默认端口；侧栏「保存配置」会按端口同步 Windsurf 补丁，修改后请重启 IDE。");
+      this.log("提示: 非默认端口；侧栏「保存配置」会按端口同步 Devin Desktop 补丁，修改后请重启 IDE。");
     }
     this.updateStatusBar();
-    await this.ensureWindsurfHttpProxySettings(_0x1888fa);
+    await this.ensureDevin DesktopHttpProxySettings(_0x1888fa);
     if (_0xf81a6c === "both") {
       const _0x51b450 = path.join(this.proxyRoot, "src", "inference-proxy.js");
       if (!fs.existsSync(_0x51b450)) {
@@ -954,7 +954,7 @@ class ProxyManager {
         const _0x5f6a7a = this.inferenceProcess;
         this.inferenceProcess.stdout?.on("data", _0x24a35a => {
           const _0x569eaa = _0x24a35a.toString().trim();
-          if (_0x569eaa.includes("⚡ Windsurf BYOK Bridge inference on http://localhost:" + _0xf9c6d3)) {
+          if (_0x569eaa.includes("⚡ Devin BYOK Bridge inference on http://localhost:" + _0xf9c6d3)) {
             _0x2dcf98 = true;
           }
           if (_0x569eaa) {
@@ -1007,7 +1007,7 @@ class ProxyManager {
       this.killListeningPort(_0x1e5435, "hybrid-server");
       this.killListeningPort(_0x24d85d, "inference-proxy");
       this.log("已停止共享代理");
-      this.restoreWindsurfHttpProxySettings();
+      this.restoreDevin DesktopHttpProxySettings();
       this.updateStatusBar();
       setTimeout(() => {
         this.autoRestart = true;
@@ -1020,7 +1020,7 @@ class ProxyManager {
       this.killProcessTree(_0xd70222, "hybrid-server");
       this.hybridProcess = null;
       this.activeHybridPort = undefined;
-      this.restoreWindsurfHttpProxySettings();
+      this.restoreDevin DesktopHttpProxySettings();
     }
     if (this.inferenceProcess) {
       const _0x159669 = this.inferenceProcess.pid;

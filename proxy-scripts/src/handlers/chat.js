@@ -257,7 +257,7 @@ export function handleGetChatMessage(_0x46a644, _0x4af334, _0x4db7a1) {
   const _0x482d16 = _0x50cd25.randomUUID();
   const _0x5e4f21 = getByokSlot(_0x3275c5);
   if (requiresConfiguredDefaultModel(_0x3275c5)) {
-    const _0xd38e5c = _0x5e4f21 === 2 ? "未配置 BYOK #2（Thinking）。请在侧栏填写 API、加载并选择模型。" : _0x5e4f21 === 1 ? "未配置 BYOK #1（Opus 4 BYOK）。请在侧栏填写 API、加载并选择模型。" : "未选择默认模型。请先回到 Windsurf BYOK Bridge，点击“加载模型”并选择默认模型后再提问。";
+    const _0xd38e5c = _0x5e4f21 === 2 ? "未配置 BYOK #2（Thinking）。请在侧栏填写 API、加载并选择模型。" : _0x5e4f21 === 1 ? "未配置 BYOK #1（Opus 4 BYOK）。请在侧栏填写 API、加载并选择模型。" : "未选择默认模型。请先回到 Devin BYOK Bridge，点击“加载模型”并选择默认模型后再提问。";
     console.error("  ❌ Missing model config for requested model " + (_0x3275c5 || "unknown"));
     writeModelConfigError(_0x4af334, _0x482d16, _0xd38e5c);
     return;
@@ -267,7 +267,7 @@ export function handleGetChatMessage(_0x46a644, _0x4af334, _0x4db7a1) {
   const _0xa49040 = buildThinkingOptions(_0x310f46, isOpenAIModel(_0x310f46), _0x5e4f21);
   _0x310f46 = stripThinkingSuffix(_0x310f46);
   if (!_0x310f46) {
-    const _0x5bf734 = "未解析到可用模型。请先在 Windsurf BYOK Bridge 中加载模型并选择默认模型。";
+    const _0x5bf734 = "未解析到可用模型。请先在 Devin BYOK Bridge 中加载模型并选择默认模型。";
     console.error("  ❌ Empty resolved model for requested model " + (_0x3275c5 || "unknown"));
     writeModelConfigError(_0x4af334, _0x482d16, _0x5bf734);
     return;

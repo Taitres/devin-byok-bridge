@@ -321,7 +321,7 @@ server.on("error", _0x514df6 => {
   process.exit(1);
 });
 server.listen(PORT, BIND_HOST, () => {
-  console.log("\n⚡ Windsurf BYOK Bridge inference on http://localhost:" + PORT);
+  console.log("\n⚡ Devin BYOK Bridge inference on http://localhost:" + PORT);
   console.log("   Bind host: " + BIND_HOST);
   console.log("\n   GetChatMessage  → Anthropic API (inline AI edit)");
   console.log("   GetCompletions → Anthropic API (code completion)");

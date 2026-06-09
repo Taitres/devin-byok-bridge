@@ -8,10 +8,10 @@
 
 ## 1. 非官方项目
 
-- **Windsurf BYOK Bridge** 为社区开源工具，由 [`ycx932436`](https://github.com/ycx932436) 维护。
-- **与 Windsurf、Codeium、Exafunction、Anthropic、OpenAI、Google 及其关联方无任何隶属、授权、合作或背书关系。**
-- 名称中的 “Windsurf”“Cascade”“Codeium” 等字样**仅用于说明兼容目标或技术上下文**，不代表官方产品、官方扩展或商标授权。
-- 本仓库**不是** Windsurf 官方插件市场条目，也**不会**获得官方技术支持。
+- **Devin BYOK Bridge**（原名 Windsurf BYOK Bridge）为社区开源工具，由 [`ycx932436`](https://github.com/ycx932436) 维护。
+- **与 Devin Desktop、Cognition、Codeium、Exafunction、Anthropic、OpenAI、Google 及其关联方无任何隶属、授权、合作或背书关系。**
+- 名称中的 “Devin”“Windsurf”“Devin Local”“Codeium” 等字样**仅用于说明兼容目标、历史名称或技术上下文**，不代表官方产品、官方扩展或商标授权。
+- 本仓库**不是** Devin Desktop 官方插件市场条目，也**不会**获得官方技术支持。
 
 ---
 
@@ -31,11 +31,11 @@
 
 使用本工具可能涉及：
 
-- 修改 Windsurf 客户端内置文件；
+- 修改 Devin Desktop（原 Windsurf）客户端内置文件；
 - 重定向 AI 相关网络流量；
 - 解析并适配第三方 IDE 与网关协议。
 
-上述行为 **可能违反** Windsurf / Codeium 或其他第三方的用户协议、服务条款、API 使用政策或所在司法辖区法规。
+上述行为 **可能违反** Devin / Codeium / Cognition 或其他第三方的用户协议、服务条款、API 使用政策或所在司法辖区法规。
 
 **你应自行确认**以下事项是否允许：
 
@@ -61,25 +61,25 @@
 
 「安装补丁」功能会：
 
-- **直接修改** Windsurf 安装目录内的 `extension.js`；
+- **直接修改** Devin Desktop 安装目录内的 `extension.js`；
 - 可能更新 `product.json` 中的 `checksums` 以匹配修改后的文件；
-- 在安装目录旁创建 `.windsurf-bak` 备份（**不保证**在所有安装方式下均可恢复）。
+- 在安装目录旁创建 `.devin-bak` 备份（仍兼容历史 `.windsurf-bak`，**不保证**在所有安装方式下均可恢复）。
 
 **风险包括但不限于：**
 
-- Windsurf 版本升级后补丁失效或行为异常；
+- Devin Desktop 版本升级后补丁失效或行为异常；
 - IDE AI 功能不可用或表现不稳定；
 - 与官方更新机制冲突。
 
-安装前请自行备份相关文件；还原补丁后通常需重载或重启 Windsurf。
+安装前请自行备份相关文件；还原补丁后通常需重载或重启 Devin Desktop。
 
 ---
 
 ## 5. 本地代理与 MITM
 
-本工具可在本地启动 HTTP 服务（默认 `:3006` / `:3001`），将 Windsurf 的 AI 请求转发至你配置的 API 网关。
+本工具可在本地启动 HTTP 服务（默认 `:3006` / `:3001`），将 Devin Desktop 的 AI 请求转发至你配置的 API 网关。
 
-可选 **MITM 模式** 会拦截发往 Windsurf 云端的 HTTPS 连接。**仅可在完全由你控制、可信的本机环境中使用。**
+可选 **MITM 模式** 会拦截发往 Codeium / Windsurf 等云端域名的 HTTPS 连接。**仅可在完全由你控制、可信的本机环境中使用。**
 
 - MITM 证书与私钥存放于 `proxy-scripts/certs/`，**不得**提交到 Git 或公开分享；
 - 在不可信网络或共享机器上启用 MITM 可能导致严重安全风险；
@@ -100,11 +100,11 @@
 ## 7. 商标与知识产权
 
 - 本项目代码以 [MIT License](LICENSE.txt) 发布（见文件内版权署名）。
-- **Windsurf、Codeium、Cascade、Anthropic、Claude、OpenAI、GPT、Google、Gemini** 等名称及相关商标、标识归各自权利人所有。
+- **Devin、Windsurf、Codeium、Cognition、Devin Local、Anthropic、Claude、OpenAI、GPT、Google、Gemini** 等名称及相关商标、标识归各自权利人所有。
 - 本仓库**不授予**任何第三方商标、商业标识或专有协议的使用权。
 - 仓库中可能包含基于公开行为观察实现的协议适配逻辑；**不表示**获得任何专有 API 或协议的正式授权。
 
-若权利人认为本仓库内容侵犯其权益，请通过 [GitHub Security Advisories](https://github.com/ycx932436/windsurf-byok-bridge/security/advisories) 或仓库 Issue 联系维护者；维护者将在合理范围内评估并响应。
+若权利人认为本仓库内容侵犯其权益，请通过 [GitHub Security Advisories](https://github.com/ycx932436/devin-byok-bridge/security/advisories) 或仓库 Issue 联系维护者；维护者将在合理范围内评估并响应。
 
 ---
 
