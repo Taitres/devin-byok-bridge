@@ -1,8 +1,8 @@
 export const KNOWN_TOOL_NAMES = new Set(["read_file", "edit", "multi_edit", "write_to_file", "run_command", "grep_search", "find_by_name", "list_dir", "code_search", "command_status", "browser_preview", "todo_list", "ask_user_question", "deploy_web_app", "read_deployment_config", "check_deploy_status", "create_memory", "search_web", "read_url_content", "view_content_chunk", "skill", "edit_notebook", "read_notebook", "trajectory_search", "read_resource", "list_resources", "read_terminal"]);
-export function normalizeToolInvocation(_0x81cab4, _0x193806) {
-  let _0x1b29d6 = _0x81cab4;
-  const _0x33d0cc = normalizeToolArguments(_0x193806);
-  const _0x308fea = {
+export function normalizeToolInvocation(arg0, arg1) {
+  let tmp2 = arg0;
+  const tmp3 = normalizeToolArguments(arg1);
+  const tmp4 = {
     view_file: "read_file",
     open_file: "read_file",
     readFile: "read_file",
@@ -43,246 +43,246 @@ export function normalizeToolInvocation(_0x81cab4, _0x193806) {
     web_search: "search_web",
     browser: "browser_preview"
   };
-  _0x1b29d6 = _0x308fea[_0x1b29d6] || _0x1b29d6;
-  if (_0x1b29d6 === "read_file") {
-    remapKey(_0x33d0cc, "target_file", "file_path");
-    remapKey(_0x33d0cc, "path", "file_path");
-    remapKey(_0x33d0cc, "TargetFile", "file_path");
+  tmp2 = tmp4[tmp2] || tmp2;
+  if (tmp2 === "read_file") {
+    remapKey(tmp3, "target_file", "file_path");
+    remapKey(tmp3, "path", "file_path");
+    remapKey(tmp3, "TargetFile", "file_path");
   }
-  if (_0x1b29d6 === "list_dir") {
-    remapKey(_0x33d0cc, "directory", "DirectoryPath");
-    remapKey(_0x33d0cc, "path", "DirectoryPath");
+  if (tmp2 === "list_dir") {
+    remapKey(tmp3, "directory", "DirectoryPath");
+    remapKey(tmp3, "path", "DirectoryPath");
   }
-  if (_0x1b29d6 === "code_search") {
-    remapKey(_0x33d0cc, "query", "search_term");
-    remapKey(_0x33d0cc, "prompt", "search_term");
-    remapKey(_0x33d0cc, "path", "search_folder_absolute_uri");
-    remapKey(_0x33d0cc, "directory", "search_folder_absolute_uri");
-    remapKey(_0x33d0cc, "SearchPath", "search_folder_absolute_uri");
+  if (tmp2 === "code_search") {
+    remapKey(tmp3, "query", "search_term");
+    remapKey(tmp3, "prompt", "search_term");
+    remapKey(tmp3, "path", "search_folder_absolute_uri");
+    remapKey(tmp3, "directory", "search_folder_absolute_uri");
+    remapKey(tmp3, "SearchPath", "search_folder_absolute_uri");
   }
-  if (_0x1b29d6 === "grep_search") {
-    remapKey(_0x33d0cc, "path", "SearchPath");
-    remapKey(_0x33d0cc, "directory", "SearchPath");
-    remapKey(_0x33d0cc, "query", "Query");
-    remapKey(_0x33d0cc, "pattern", "Query");
-    remapArrayKey(_0x33d0cc, "include", "Includes");
-    remapArrayKey(_0x33d0cc, "includes", "Includes");
+  if (tmp2 === "grep_search") {
+    remapKey(tmp3, "path", "SearchPath");
+    remapKey(tmp3, "directory", "SearchPath");
+    remapKey(tmp3, "query", "Query");
+    remapKey(tmp3, "pattern", "Query");
+    remapArrayKey(tmp3, "include", "Includes");
+    remapArrayKey(tmp3, "includes", "Includes");
   }
-  if (_0x1b29d6 === "run_command") {
-    remapKey(_0x33d0cc, "command", "CommandLine");
-    remapKey(_0x33d0cc, "cmd", "CommandLine");
-    remapKey(_0x33d0cc, "cwd", "Cwd");
-    remapKey(_0x33d0cc, "working_directory", "Cwd");
-    remapKey(_0x33d0cc, "blocking", "Blocking");
-    remapKey(_0x33d0cc, "safe", "SafeToAutoRun");
+  if (tmp2 === "run_command") {
+    remapKey(tmp3, "command", "CommandLine");
+    remapKey(tmp3, "cmd", "CommandLine");
+    remapKey(tmp3, "cwd", "Cwd");
+    remapKey(tmp3, "working_directory", "Cwd");
+    remapKey(tmp3, "blocking", "Blocking");
+    remapKey(tmp3, "safe", "SafeToAutoRun");
   }
-  if (_0x1b29d6 === "todo_list") {
-    if (_0x33d0cc.items !== undefined && _0x33d0cc.todos === undefined) {
-      const _0x50ccd6 = Array.isArray(_0x33d0cc.items) ? _0x33d0cc.items : String(_0x33d0cc.items).split(/[,，]/).map(_0x7581ed => _0x7581ed.trim()).filter(Boolean);
-      _0x33d0cc.todos = _0x50ccd6.map((_0x31dedd, _0x517b65) => ({
-        id: String(_0x517b65 + 1),
-        content: typeof _0x31dedd === "string" ? _0x31dedd : _0x31dedd.content || _0x31dedd.text || String(_0x31dedd),
+  if (tmp2 === "todo_list") {
+    if (tmp3.items !== undefined && tmp3.todos === undefined) {
+      const tmp0 = Array.isArray(tmp3.items) ? tmp3.items : String(tmp3.items).split(/[,，]/).map(arg02 => arg02.trim()).filter(Boolean);
+      tmp3.todos = tmp0.map((arg02, arg12) => ({
+        id: String(arg12 + 1),
+        content: typeof arg02 === "string" ? arg02 : arg02.content || arg02.text || String(arg02),
         priority: "medium",
         status: "pending"
       }));
-      delete _0x33d0cc.items;
+      delete tmp3.items;
     }
-    if (_0x33d0cc.tasks !== undefined && _0x33d0cc.todos === undefined) {
-      _0x33d0cc.todos = Array.isArray(_0x33d0cc.tasks) ? _0x33d0cc.tasks : [];
-      delete _0x33d0cc.tasks;
+    if (tmp3.tasks !== undefined && tmp3.todos === undefined) {
+      tmp3.todos = Array.isArray(tmp3.tasks) ? tmp3.tasks : [];
+      delete tmp3.tasks;
     }
-    if (Array.isArray(_0x33d0cc.todos)) {
-      _0x33d0cc.todos = _0x33d0cc.todos.map((_0x5981f5, _0x4dc0d0) => {
-        if (typeof _0x5981f5 === "string") {
+    if (Array.isArray(tmp3.todos)) {
+      tmp3.todos = tmp3.todos.map((arg02, arg12) => {
+        if (typeof arg02 === "string") {
           return {
-            id: String(_0x4dc0d0 + 1),
-            content: _0x5981f5,
+            id: String(arg12 + 1),
+            content: arg02,
             priority: "medium",
             status: "pending"
           };
         }
-        if (typeof _0x5981f5 === "object" && _0x5981f5 !== null) {
+        if (typeof arg02 === "object" && arg02 !== null) {
           return {
-            id: _0x5981f5.id || String(_0x4dc0d0 + 1),
-            content: _0x5981f5.content || _0x5981f5.text || _0x5981f5.title || String(_0x5981f5),
-            priority: _0x5981f5.priority || "medium",
-            status: _0x5981f5.status || "pending"
+            id: arg02.id || String(arg12 + 1),
+            content: arg02.content || arg02.text || arg02.title || String(arg02),
+            priority: arg02.priority || "medium",
+            status: arg02.status || "pending"
           };
         }
         return {
-          id: String(_0x4dc0d0 + 1),
-          content: String(_0x5981f5),
+          id: String(arg12 + 1),
+          content: String(arg02),
           priority: "medium",
           status: "pending"
         };
       });
     }
-    delete _0x33d0cc.operation;
+    delete tmp3.operation;
   }
-  if (_0x1b29d6 === "write_to_file") {
-    remapKey(_0x33d0cc, "file_path", "TargetFile");
-    remapKey(_0x33d0cc, "path", "TargetFile");
-    remapKey(_0x33d0cc, "target_file", "TargetFile");
-    remapKey(_0x33d0cc, "content", "CodeContent");
-    remapKey(_0x33d0cc, "code", "CodeContent");
-    remapKey(_0x33d0cc, "text", "CodeContent");
-    if (_0x33d0cc.EmptyFile === undefined) {
-      _0x33d0cc.EmptyFile = false;
+  if (tmp2 === "write_to_file") {
+    remapKey(tmp3, "file_path", "TargetFile");
+    remapKey(tmp3, "path", "TargetFile");
+    remapKey(tmp3, "target_file", "TargetFile");
+    remapKey(tmp3, "content", "CodeContent");
+    remapKey(tmp3, "code", "CodeContent");
+    remapKey(tmp3, "text", "CodeContent");
+    if (tmp3.EmptyFile === undefined) {
+      tmp3.EmptyFile = false;
     }
   }
-  if (_0x1b29d6 === "ask_user_question") {
-    remapKey(_0x33d0cc, "question_text", "question");
-    remapKey(_0x33d0cc, "prompt", "question");
-    remapKey(_0x33d0cc, "message", "question");
-    remapKey(_0x33d0cc, "choices", "options");
-    remapKey(_0x33d0cc, "allow_multiple", "allowMultiple");
-    remapKey(_0x33d0cc, "multi", "allowMultiple");
-    remapKey(_0x33d0cc, "multiple", "allowMultiple");
+  if (tmp2 === "ask_user_question") {
+    remapKey(tmp3, "question_text", "question");
+    remapKey(tmp3, "prompt", "question");
+    remapKey(tmp3, "message", "question");
+    remapKey(tmp3, "choices", "options");
+    remapKey(tmp3, "allow_multiple", "allowMultiple");
+    remapKey(tmp3, "multi", "allowMultiple");
+    remapKey(tmp3, "multiple", "allowMultiple");
   }
-  if (_0x1b29d6 === "edit") {
-    remapKey(_0x33d0cc, "path", "file_path");
-    remapKey(_0x33d0cc, "target_file", "file_path");
-    remapKey(_0x33d0cc, "search", "old_string");
-    remapKey(_0x33d0cc, "replace", "new_string");
-    remapKey(_0x33d0cc, "description", "explanation");
+  if (tmp2 === "edit") {
+    remapKey(tmp3, "path", "file_path");
+    remapKey(tmp3, "target_file", "file_path");
+    remapKey(tmp3, "search", "old_string");
+    remapKey(tmp3, "replace", "new_string");
+    remapKey(tmp3, "description", "explanation");
   }
-  if (_0x1b29d6 === "multi_edit") {
-    remapKey(_0x33d0cc, "path", "file_path");
-    remapKey(_0x33d0cc, "target_file", "file_path");
-    remapKey(_0x33d0cc, "description", "explanation");
+  if (tmp2 === "multi_edit") {
+    remapKey(tmp3, "path", "file_path");
+    remapKey(tmp3, "target_file", "file_path");
+    remapKey(tmp3, "description", "explanation");
   }
-  if (_0x1b29d6 === "find_by_name") {
-    remapKey(_0x33d0cc, "path", "SearchDirectory");
-    remapKey(_0x33d0cc, "directory", "SearchDirectory");
-    remapKey(_0x33d0cc, "pattern", "Pattern");
-    remapKey(_0x33d0cc, "type", "Type");
+  if (tmp2 === "find_by_name") {
+    remapKey(tmp3, "path", "SearchDirectory");
+    remapKey(tmp3, "directory", "SearchDirectory");
+    remapKey(tmp3, "pattern", "Pattern");
+    remapKey(tmp3, "type", "Type");
   }
-  if (_0x1b29d6 === "browser_preview") {
-    remapKey(_0x33d0cc, "title", "Name");
-    remapKey(_0x33d0cc, "name", "Name");
-    remapKey(_0x33d0cc, "url", "Url");
+  if (tmp2 === "browser_preview") {
+    remapKey(tmp3, "title", "Name");
+    remapKey(tmp3, "name", "Name");
+    remapKey(tmp3, "url", "Url");
   }
-  if (_0x1b29d6 === "search_web") {
-    remapKey(_0x33d0cc, "q", "query");
-    remapKey(_0x33d0cc, "term", "query");
-    remapKey(_0x33d0cc, "site", "domain");
+  if (tmp2 === "search_web") {
+    remapKey(tmp3, "q", "query");
+    remapKey(tmp3, "term", "query");
+    remapKey(tmp3, "site", "domain");
   }
-  const _0x4ab1a2 = normalizeToolParams(_0x1b29d6, _0x33d0cc);
-  const _0x274667 = {
-    toolName: _0x1b29d6,
-    params: _0x4ab1a2
+  const tmp5 = normalizeToolParams(tmp2, tmp3);
+  const tmp6 = {
+    toolName: tmp2,
+    params: tmp5
   };
-  return _0x274667;
+  return tmp6;
 }
-export function normalizeToolArguments(_0xc4b9ad) {
-  if (_0xc4b9ad == null) {
+export function normalizeToolArguments(arg0) {
+  if (arg0 == null) {
     return {};
   }
-  if (typeof _0xc4b9ad === "string") {
-    const _0x1b4a2b = _0xc4b9ad.trim();
-    const _0xf80750 = _0x1b4a2b.startsWith("{") && _0x1b4a2b.endsWith("}") || _0x1b4a2b.startsWith("[") && _0x1b4a2b.endsWith("]");
-    if (_0xf80750) {
+  if (typeof arg0 === "string") {
+    const tmp0 = arg0.trim();
+    const tmp1 = tmp0.startsWith("{") && tmp0.endsWith("}") || tmp0.startsWith("[") && tmp0.endsWith("]");
+    if (tmp1) {
       try {
-        return normalizeToolArguments(JSON.parse(_0x1b4a2b));
+        return normalizeToolArguments(JSON.parse(tmp0));
       } catch {
-        return _0xc4b9ad;
+        return arg0;
       }
     }
-    return _0xc4b9ad;
+    return arg0;
   }
-  if (Array.isArray(_0xc4b9ad)) {
-    return _0xc4b9ad.map(_0x4b4829 => normalizeToolArguments(_0x4b4829));
+  if (Array.isArray(arg0)) {
+    return arg0.map(arg02 => normalizeToolArguments(arg02));
   }
-  if (typeof _0xc4b9ad === "object") {
-    const _0x572695 = {};
-    for (const [_0x24d78e, _0x592395] of Object.entries(_0xc4b9ad)) {
-      _0x572695[_0x24d78e] = normalizeToolArguments(_0x592395);
+  if (typeof arg0 === "object") {
+    const tmp0 = {};
+    for (const [tmp02, tmp1] of Object.entries(arg0)) {
+      tmp0[tmp02] = normalizeToolArguments(tmp1);
     }
-    return _0x572695;
+    return tmp0;
   }
-  return _0xc4b9ad;
+  return arg0;
 }
-export function normalizeToolParams(_0x196bab, _0x1c8ffa) {
-  if (!_0x1c8ffa || typeof _0x1c8ffa !== "object" || Array.isArray(_0x1c8ffa)) {
-    return _0x1c8ffa;
+export function normalizeToolParams(arg0, arg1) {
+  if (!arg1 || typeof arg1 !== "object" || Array.isArray(arg1)) {
+    return arg1;
   }
-  const _0x401ca1 = {};
-  for (const [_0x50d884, _0x328a5e] of Object.entries(_0x1c8ffa)) {
-    let _0x267dc6 = _0x328a5e;
-    if (typeof _0x267dc6 !== "string") {
-      _0x401ca1[_0x50d884] = normalizeToolArguments(_0x267dc6);
+  const tmp2 = {};
+  for (const [tmp0, tmp1] of Object.entries(arg1)) {
+    let tmp02 = tmp1;
+    if (typeof tmp02 !== "string") {
+      tmp2[tmp0] = normalizeToolArguments(tmp02);
       continue;
     }
-    const _0x5ef7f4 = _0x267dc6.trim();
-    if (_0x5ef7f4 === "true") {
-      _0x401ca1[_0x50d884] = true;
+    const tmp12 = tmp02.trim();
+    if (tmp12 === "true") {
+      tmp2[tmp0] = true;
       continue;
     }
-    if (_0x5ef7f4 === "false") {
-      _0x401ca1[_0x50d884] = false;
+    if (tmp12 === "false") {
+      tmp2[tmp0] = false;
       continue;
     }
-    if (_0x5ef7f4.startsWith("[") && _0x5ef7f4.endsWith("]") || _0x5ef7f4.startsWith("{") && _0x5ef7f4.endsWith("}")) {
+    if (tmp12.startsWith("[") && tmp12.endsWith("]") || tmp12.startsWith("{") && tmp12.endsWith("}")) {
       try {
-        _0x401ca1[_0x50d884] = normalizeToolArguments(JSON.parse(_0x5ef7f4));
+        tmp2[tmp0] = normalizeToolArguments(JSON.parse(tmp12));
         continue;
       } catch {}
     }
-    _0x401ca1[_0x50d884] = _0x267dc6;
+    tmp2[tmp0] = tmp02;
   }
-  if (_0x196bab === "ask_user_question" && _0x401ca1.options !== undefined) {
-    _0x401ca1.options = normalizeAskUserOptions(_0x401ca1.options);
-    if (_0x401ca1.allowMultiple === undefined) {
-      _0x401ca1.allowMultiple = false;
+  if (arg0 === "ask_user_question" && tmp2.options !== undefined) {
+    tmp2.options = normalizeAskUserOptions(tmp2.options);
+    if (tmp2.allowMultiple === undefined) {
+      tmp2.allowMultiple = false;
     }
   }
-  return _0x401ca1;
+  return tmp2;
 }
-export function normalizeAskUserOptions(_0x4286de) {
-  if (Array.isArray(_0x4286de)) {
-    return _0x4286de.map(_0x4e11c7 => {
-      if (typeof _0x4e11c7 === "string") {
-        const _0x157b69 = _0x4e11c7.trim();
-        if (!_0x157b69) {
+export function normalizeAskUserOptions(arg0) {
+  if (Array.isArray(arg0)) {
+    return arg0.map(arg02 => {
+      if (typeof arg02 === "string") {
+        const tmp0 = arg02.trim();
+        if (!tmp0) {
           return null;
         }
-        const _0x50c2a4 = {
-          label: _0x157b69,
-          description: _0x157b69
+        const tmp1 = {
+          label: tmp0,
+          description: tmp0
         };
-        return _0x50c2a4;
+        return tmp1;
       }
-      if (_0x4e11c7 && typeof _0x4e11c7 === "object") {
-        const _0x19f298 = String(_0x4e11c7.label || _0x4e11c7.name || _0x4e11c7.title || "").trim();
-        const _0xe7c909 = String(_0x4e11c7.description || _0x4e11c7.detail || _0x19f298).trim();
-        if (!_0x19f298) {
+      if (arg02 && typeof arg02 === "object") {
+        const tmp0 = String(arg02.label || arg02.name || arg02.title || "").trim();
+        const tmp1 = String(arg02.description || arg02.detail || tmp0).trim();
+        if (!tmp0) {
           return null;
         }
         return {
-          label: _0x19f298,
-          description: _0xe7c909 || _0x19f298
+          label: tmp0,
+          description: tmp1 || tmp0
         };
       }
       return null;
     }).filter(Boolean);
   }
-  if (typeof _0x4286de === "string") {
-    return _0x4286de.split(/[|,，\n]/).map(_0x2d265e => _0x2d265e.trim()).filter(Boolean).map(_0xd38259 => ({
-      label: _0xd38259,
-      description: _0xd38259
+  if (typeof arg0 === "string") {
+    return arg0.split(/[|,，\n]/).map(arg02 => arg02.trim()).filter(Boolean).map(arg02 => ({
+      label: arg02,
+      description: arg02
     }));
   }
   return [];
 }
-function remapKey(_0x266648, _0x188f46, _0x5a85ce) {
-  if (_0x266648[_0x188f46] !== undefined && _0x266648[_0x5a85ce] === undefined) {
-    _0x266648[_0x5a85ce] = _0x266648[_0x188f46];
-    delete _0x266648[_0x188f46];
+function remapKey(arg0, arg1, arg2) {
+  if (arg0[arg1] !== undefined && arg0[arg2] === undefined) {
+    arg0[arg2] = arg0[arg1];
+    delete arg0[arg1];
   }
 }
-function remapArrayKey(_0x451937, _0x1c901d, _0x353381) {
-  if (_0x451937[_0x1c901d] !== undefined && _0x451937[_0x353381] === undefined) {
-    _0x451937[_0x353381] = Array.isArray(_0x451937[_0x1c901d]) ? _0x451937[_0x1c901d] : [_0x451937[_0x1c901d]];
-    delete _0x451937[_0x1c901d];
+function remapArrayKey(arg0, arg1, arg2) {
+  if (arg0[arg1] !== undefined && arg0[arg2] === undefined) {
+    arg0[arg2] = Array.isArray(arg0[arg1]) ? arg0[arg1] : [arg0[arg1]];
+    delete arg0[arg1];
   }
 }

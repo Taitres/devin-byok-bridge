@@ -2,43 +2,43 @@ import { buildTextDelta, buildThinkingDelta, buildToolCallDelta, buildSignatureD
 import { MAX_TOOL_MARKER_LOOKBEHIND, findToolCallStartIndex, parseTextToolCalls } from "./tool-call-parser.js";
 import { normalizeToolInvocation } from "./tool-normalization.js";
 import { emitAIText, emitToolCall, emitChatEnd } from "../ws-bridge.js";
-export function parseSSEChunk(_0x4a3993) {
-  const _0x5d2a56 = [];
-  const _0x1a4cc3 = _0x4a3993.split("\n");
-  let _0x5aabf6 = null;
-  let _0x2bc71a = [];
-  for (const _0x357419 of _0x1a4cc3) {
-    if (_0x357419.startsWith("event: ")) {
-      _0x5aabf6 = _0x357419.slice(7).trim();
-    } else if (_0x357419.startsWith("data: ")) {
-      _0x2bc71a.push(_0x357419.slice(6));
-    } else if (_0x357419.startsWith("data:")) {
-      _0x2bc71a.push(_0x357419.slice(5));
-    } else if (_0x357419 === "" && _0x5aabf6 !== null) {
-      const _0xe7d3b4 = _0x2bc71a.join("\n");
+export function parseSSEChunk(arg0) {
+  const tmp1 = [];
+  const tmp2 = arg0.split("\n");
+  let tmp3 = null;
+  let tmp4 = [];
+  for (const tmp0 of tmp2) {
+    if (tmp0.startsWith("event: ")) {
+      tmp3 = tmp0.slice(7).trim();
+    } else if (tmp0.startsWith("data: ")) {
+      tmp4.push(tmp0.slice(6));
+    } else if (tmp0.startsWith("data:")) {
+      tmp4.push(tmp0.slice(5));
+    } else if (tmp0 === "" && tmp3 !== null) {
+      const tmp02 = tmp4.join("\n");
       try {
-        _0x5d2a56.push({
-          event: _0x5aabf6,
-          data: JSON.parse(_0xe7d3b4)
+        tmp1.push({
+          event: tmp3,
+          data: JSON.parse(tmp02)
         });
       } catch {
-        const _0x11a91d = {
-          event: _0x5aabf6,
-          data: _0xe7d3b4
+        const tmp03 = {
+          event: tmp3,
+          data: tmp02
         };
-        _0x5d2a56.push(_0x11a91d);
+        tmp1.push(tmp03);
       }
-      _0x5aabf6 = null;
-      _0x2bc71a = [];
+      tmp3 = null;
+      tmp4 = [];
     }
   }
-  return _0x5d2a56;
+  return tmp1;
 }
 export class AnthropicStreamProcessor {
-  constructor(_0x5a3e7a, _0x43338b, _0x46dcf1 = null) {
-    this._messageId = _0x5a3e7a;
-    this._modelUid = _0x43338b;
-    this._targetId = _0x46dcf1;
+  constructor(tmp0, tmp1, tmp2 = null) {
+    this._messageId = tmp0;
+    this._modelUid = tmp1;
+    this._targetId = tmp2;
     this._tokenCount = 0;
     this._done = false;
     this._stopReason = null;
@@ -53,34 +53,34 @@ export class AnthropicStreamProcessor {
     this._capturedToolText = "";
     this._emittedToolCall = false;
   }
-  processEvent(_0x4c8066) {
+  processEvent(tmp0) {
     const {
-      event: _0x3786b6,
-      data: _0x2e914e
-    } = _0x4c8066;
-    const _0x11f198 = [];
-    switch (_0x3786b6) {
+      event: tmp1,
+      data: tmp2
+    } = tmp0;
+    const tmp3 = [];
+    switch (tmp1) {
       case "content_block_start":
-        this._onContentBlockStart(_0x2e914e, _0x11f198);
+        this._onContentBlockStart(tmp2, tmp3);
         break;
       case "content_block_delta":
-        this._onContentBlockDelta(_0x2e914e, _0x11f198);
+        this._onContentBlockDelta(tmp2, tmp3);
         break;
       case "content_block_stop":
-        this._onContentBlockStop(_0x2e914e, _0x11f198);
+        this._onContentBlockStop(tmp2, tmp3);
         break;
       case "message_delta":
-        if (_0x2e914e?.delta?.stop_reason) {
-          this._stopReason = _0x2e914e.delta.stop_reason;
+        if (tmp2?.delta?.stop_reason) {
+          this._stopReason = tmp2.delta.stop_reason;
         }
         break;
       case "message_stop":
-        this._onMessageStop(_0x11f198);
+        this._onMessageStop(tmp3);
         break;
       default:
         break;
     }
-    return _0x11f198;
+    return tmp3;
   }
   get isDone() {
     return this._done;
@@ -88,139 +88,139 @@ export class AnthropicStreamProcessor {
   get stopReason() {
     return this._stopReason;
   }
-  _onContentBlockStart(_0x5170d5, _0x3fad87) {
-    const _0x25b80e = _0x5170d5?.content_block;
-    if (!_0x25b80e) {
+  _onContentBlockStart(tmp0, tmp1) {
+    const tmp2 = tmp0?.content_block;
+    if (!tmp2) {
       return;
     }
-    this._currentBlockType = _0x25b80e.type;
-    this._currentBlockIndex = _0x5170d5?.index ?? -1;
-    if (_0x25b80e.type === "tool_use") {
-      this._toolId = _0x25b80e.id ?? null;
-      this._toolName = _0x25b80e.name ?? null;
+    this._currentBlockType = tmp2.type;
+    this._currentBlockIndex = tmp0?.index ?? -1;
+    if (tmp2.type === "tool_use") {
+      this._toolId = tmp2.id ?? null;
+      this._toolName = tmp2.name ?? null;
       this._toolArgsBuffer = "";
-    } else if (_0x25b80e.type === "thinking") {
+    } else if (tmp2.type === "thinking") {
       this._signatureBuffer = "";
     }
   }
-  _onContentBlockDelta(_0x1b994b, _0x10d71f) {
-    const _0x46585d = _0x1b994b?.delta;
-    if (!_0x46585d) {
+  _onContentBlockDelta(tmp0, tmp1) {
+    const tmp2 = tmp0?.delta;
+    if (!tmp2) {
       return;
     }
-    if (_0x46585d.type === "text_delta" && _0x46585d.text) {
-      this._handleTextDelta(_0x46585d.text, _0x10d71f);
-    } else if (_0x46585d.type === "thinking_delta" && _0x46585d.thinking) {
-      _0x10d71f.push(buildThinkingDelta(this._messageId, _0x46585d.thinking));
-    } else if (_0x46585d.type === "input_json_delta" && _0x46585d.partial_json != null) {
-      this._toolArgsBuffer += _0x46585d.partial_json;
-    } else if (_0x46585d.type === "signature_delta" && _0x46585d.signature != null) {
-      this._signatureBuffer += _0x46585d.signature;
+    if (tmp2.type === "text_delta" && tmp2.text) {
+      this._handleTextDelta(tmp2.text, tmp1);
+    } else if (tmp2.type === "thinking_delta" && tmp2.thinking) {
+      tmp1.push(buildThinkingDelta(this._messageId, tmp2.thinking));
+    } else if (tmp2.type === "input_json_delta" && tmp2.partial_json != null) {
+      this._toolArgsBuffer += tmp2.partial_json;
+    } else if (tmp2.type === "signature_delta" && tmp2.signature != null) {
+      this._signatureBuffer += tmp2.signature;
     }
   }
-  _onContentBlockStop(_0x157ad8, _0x3c6850) {
+  _onContentBlockStop(tmp0, tmp1) {
     if (this._currentBlockType === "text") {
-      this._flushBufferedText(_0x3c6850, true);
+      this._flushBufferedText(tmp1, true);
     } else if (this._currentBlockType === "tool_use") {
-      const _0x5307cc = normalizeToolInvocation(this._toolName ?? "", this._toolArgsBuffer);
-      if (!_0x5307cc.toolName) {
-        this._restoreInterceptedText(_0x3c6850);
+      const tmp02 = normalizeToolInvocation(this._toolName ?? "", this._toolArgsBuffer);
+      if (!tmp02.toolName) {
+        this._restoreInterceptedText(tmp1);
         this._toolId = null;
         this._toolName = null;
         this._toolArgsBuffer = "";
         return;
       }
-      const _0xe2e8e = {
+      const tmp12 = {
         id: this._toolId ?? "",
-        name: _0x5307cc.toolName,
-        arguments_json: JSON.stringify(_0x5307cc.params ?? {})
+        name: tmp02.toolName,
+        arguments_json: JSON.stringify(tmp02.params ?? {})
       };
-      _0x3c6850.push(buildToolCallDelta(this._messageId, [_0xe2e8e]));
-      emitToolCall(_0xe2e8e.name, _0xe2e8e.arguments_json, _0xe2e8e.id, this._targetId);
+      tmp1.push(buildToolCallDelta(this._messageId, [tmp12]));
+      emitToolCall(tmp12.name, tmp12.arguments_json, tmp12.id, this._targetId);
       this._emittedToolCall = true;
       this._toolId = null;
       this._toolName = null;
       this._toolArgsBuffer = "";
     } else if (this._currentBlockType === "thinking" && this._signatureBuffer) {
-      _0x3c6850.push(buildSignatureDelta(this._messageId, this._signatureBuffer));
+      tmp1.push(buildSignatureDelta(this._messageId, this._signatureBuffer));
       this._signatureBuffer = "";
     }
     this._currentBlockType = null;
     this._currentBlockIndex = -1;
   }
-  _onMessageStop(_0x3429a7) {
+  _onMessageStop(tmp0) {
     if (!this._emittedToolCall) {
-      const _0x743f06 = "" + this._capturedToolText + this._pendingText;
-      const _0x539291 = parseTextToolCalls(_0x743f06);
-      if (_0x539291.length > 0) {
-        console.log("  🔧 Recovered " + _0x539291.length + " tool call(s) from Anthropic text: " + _0x539291.map(_0x1dca50 => _0x1dca50.name).join(", "));
-        const _0x13020e = _0x539291.map((_0x352a73, _0xc2c3cd) => ({
-          id: "tc_recovered_" + _0xc2c3cd,
-          name: _0x352a73.name,
-          arguments_json: JSON.stringify(_0x352a73.input ?? {})
+      const tmp02 = "" + this._capturedToolText + this._pendingText;
+      const tmp12 = parseTextToolCalls(tmp02);
+      if (tmp12.length > 0) {
+        console.log("  🔧 Recovered " + tmp12.length + " tool call(s) from Anthropic text: " + tmp12.map(arg0 => arg0.name).join(", "));
+        const tmp03 = tmp12.map((arg0, arg1) => ({
+          id: "tc_recovered_" + arg1,
+          name: arg0.name,
+          arguments_json: JSON.stringify(arg0.input ?? {})
         }));
-        _0x3429a7.push(buildToolCallDelta(this._messageId, _0x13020e));
-        for (const _0x33eec0 of _0x13020e) {
-          emitToolCall(_0x33eec0.name, _0x33eec0.arguments_json, _0x33eec0.id, this._targetId);
+        tmp0.push(buildToolCallDelta(this._messageId, tmp03));
+        for (const tmp04 of tmp03) {
+          emitToolCall(tmp04.name, tmp04.arguments_json, tmp04.id, this._targetId);
         }
         this._stopReason = "tool_use";
       } else {
-        this._restoreInterceptedText(_0x3429a7);
+        this._restoreInterceptedText(tmp0);
       }
     } else {
-      this._flushBufferedText(_0x3429a7, true);
+      this._flushBufferedText(tmp0, true);
     }
-    const _0x102498 = this._mapStopReason(this._stopReason);
-    _0x3429a7.push(buildStopChunk(this._messageId, _0x102498, this._modelUid));
+    const tmp1 = this._mapStopReason(this._stopReason);
+    tmp0.push(buildStopChunk(this._messageId, tmp1, this._modelUid));
     emitChatEnd(this._stopReason, [], this._targetId);
     this._done = true;
   }
-  _handleTextDelta(_0x174ca0, _0x5dddb6) {
+  _handleTextDelta(tmp0, tmp1) {
     if (this._capturingToolText) {
-      this._capturedToolText += _0x174ca0;
+      this._capturedToolText += tmp0;
       return;
     }
-    this._pendingText += _0x174ca0;
-    const _0x257a74 = findToolCallStartIndex(this._pendingText);
-    if (_0x257a74 !== -1) {
-      const _0x32e44e = this._pendingText.slice(0, _0x257a74);
-      if (_0x32e44e) {
-        this._emitTextChunk(_0x32e44e, _0x5dddb6);
+    this._pendingText += tmp0;
+    const tmp2 = findToolCallStartIndex(this._pendingText);
+    if (tmp2 !== -1) {
+      const tmp02 = this._pendingText.slice(0, tmp2);
+      if (tmp02) {
+        this._emitTextChunk(tmp02, tmp1);
       }
-      this._capturedToolText = this._pendingText.slice(_0x257a74);
+      this._capturedToolText = this._pendingText.slice(tmp2);
       this._pendingText = "";
       this._capturingToolText = true;
       console.log("  🔎 Detected possible Anthropic text tool-call start; intercepting subsequent text");
       return;
     }
-    this._flushBufferedText(_0x5dddb6, false);
+    this._flushBufferedText(tmp1, false);
   }
-  _flushBufferedText(_0x4dcdd4, _0x501c5c) {
-    const _0xeacab4 = _0x501c5c ? 0 : Math.min(this._pendingText.length, MAX_TOOL_MARKER_LOOKBEHIND);
-    const _0x23d732 = _0x501c5c ? this._pendingText : this._pendingText.slice(0, this._pendingText.length - _0xeacab4);
-    if (_0x23d732) {
-      this._emitTextChunk(_0x23d732, _0x4dcdd4);
-      this._pendingText = this._pendingText.slice(_0x23d732.length);
+  _flushBufferedText(tmp0, tmp1) {
+    const tmp2 = tmp1 ? 0 : Math.min(this._pendingText.length, MAX_TOOL_MARKER_LOOKBEHIND);
+    const tmp3 = tmp1 ? this._pendingText : this._pendingText.slice(0, this._pendingText.length - tmp2);
+    if (tmp3) {
+      this._emitTextChunk(tmp3, tmp0);
+      this._pendingText = this._pendingText.slice(tmp3.length);
     }
   }
-  _emitTextChunk(_0x20dc5e, _0x35b74a) {
-    if (!_0x20dc5e) {
+  _emitTextChunk(tmp0, tmp1) {
+    if (!tmp0) {
       return;
     }
     this._tokenCount++;
-    _0x35b74a.push(buildTextDelta(this._messageId, _0x20dc5e, this._tokenCount));
-    emitAIText(_0x20dc5e, true, this._targetId);
+    tmp1.push(buildTextDelta(this._messageId, tmp0, this._tokenCount));
+    emitAIText(tmp0, true, this._targetId);
   }
-  _restoreInterceptedText(_0x28a315) {
+  _restoreInterceptedText(tmp0) {
     if (this._capturedToolText) {
-      this._emitTextChunk(this._capturedToolText, _0x28a315);
+      this._emitTextChunk(this._capturedToolText, tmp0);
       this._capturedToolText = "";
       this._capturingToolText = false;
     }
-    this._flushBufferedText(_0x28a315, true);
+    this._flushBufferedText(tmp0, true);
   }
-  _mapStopReason(_0x4a01a4) {
-    switch (_0x4a01a4) {
+  _mapStopReason(tmp0) {
+    switch (tmp0) {
       case "end_turn":
         return STOP_REASON.STOP_PATTERN;
       case "tool_use":

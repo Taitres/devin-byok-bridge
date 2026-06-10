@@ -37,7 +37,6 @@
 - 在**违背本地单机设计**的场景下暴露 `:3006` / `:3001`（如绑定公网、端口转发）导致的未授权访问
 - 违反 Devin Desktop / Codeium 服务条款或使用补丁修改客户端本身（见 [DISCLAIMER.md](DISCLAIMER.md)）
 - 上游模型网关（Anthropic、OpenAI、Google 等）的缺陷
-- 要求公开完整去混淆源码或逐行审计混淆实现本身
 
 ## User Security Guidelines
 

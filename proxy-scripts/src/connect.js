@@ -1,68 +1,68 @@
-import _0x9e05fd from "node:zlib";
-export function gzipSync(_0x5dabf3) {
-  return _0x9e05fd.gzipSync(_0x5dabf3);
+import tmp0 from "node:zlib";
+export function gzipSync(arg0) {
+  return tmp0.gzipSync(arg0);
 }
-export function gunzipSync(_0x4d9c44) {
-  return _0x9e05fd.gunzipSync(_0x4d9c44);
+export function gunzipSync(arg0) {
+  return tmp0.gunzipSync(arg0);
 }
-export function tryGunzip(_0x504127) {
+export function tryGunzip(arg0) {
   try {
-    return _0x9e05fd.gunzipSync(_0x504127);
+    return tmp0.gunzipSync(arg0);
   } catch {
     return null;
   }
 }
-export function wrapEnvelope(_0x73ef26, _0x596056 = true) {
-  if (_0x596056) {
-    const _0x40294d = gzipSync(_0x73ef26);
-    const _0x5cbc47 = Buffer.alloc(5);
-    _0x5cbc47[0] = 1;
-    _0x5cbc47.writeUInt32BE(_0x40294d.length, 1);
-    return Buffer.concat([_0x5cbc47, _0x40294d]);
+export function wrapEnvelope(arg0, tmp1 = true) {
+  if (tmp1) {
+    const tmp02 = gzipSync(arg0);
+    const tmp12 = Buffer.alloc(5);
+    tmp12[0] = 1;
+    tmp12.writeUInt32BE(tmp02.length, 1);
+    return Buffer.concat([tmp12, tmp02]);
   }
-  const _0x4d2255 = Buffer.alloc(5);
-  _0x4d2255[0] = 0;
-  _0x4d2255.writeUInt32BE(_0x73ef26.length, 1);
-  return Buffer.concat([_0x4d2255, _0x73ef26]);
+  const tmp2 = Buffer.alloc(5);
+  tmp2[0] = 0;
+  tmp2.writeUInt32BE(arg0.length, 1);
+  return Buffer.concat([tmp2, arg0]);
 }
 export function endOfStreamEnvelope() {
-  const _0x4d0355 = gzipSync(Buffer.from("{}"));
-  const _0x363e0b = Buffer.alloc(5);
-  _0x363e0b[0] = 3;
-  _0x363e0b.writeUInt32BE(_0x4d0355.length, 1);
-  return Buffer.concat([_0x363e0b, _0x4d0355]);
+  const tmp02 = gzipSync(Buffer.from("{}"));
+  const tmp1 = Buffer.alloc(5);
+  tmp1[0] = 3;
+  tmp1.writeUInt32BE(tmp02.length, 1);
+  return Buffer.concat([tmp1, tmp02]);
 }
-export function unwrapRequest(_0x4b2831, _0x24fbc2) {
-  const _0x2c5f38 = _0x24fbc2["connect-content-encoding"] || _0x24fbc2["content-encoding"] || "";
-  const _0x1e11f1 = _0x2c5f38.includes("gzip");
-  let _0x3b6e50 = _0x4b2831;
-  if (_0x1e11f1) {
-    const _0x8b64fb = tryGunzip(_0x3b6e50);
-    if (_0x8b64fb) {
-      _0x3b6e50 = _0x8b64fb;
+export function unwrapRequest(arg0, arg1) {
+  const tmp2 = arg1["connect-content-encoding"] || arg1["content-encoding"] || "";
+  const tmp3 = tmp2.includes("gzip");
+  let tmp4 = arg0;
+  if (tmp3) {
+    const tmp02 = tryGunzip(tmp4);
+    if (tmp02) {
+      tmp4 = tmp02;
     }
   }
-  if (_0x3b6e50.length > 5) {
-    const _0x58d1bb = _0x3b6e50[0];
-    const _0x56a317 = _0x3b6e50.readUInt32BE(1);
-    if (_0x56a317 === _0x3b6e50.length - 5 && _0x58d1bb <= 1) {
-      let _0x228782 = _0x3b6e50.slice(5);
-      if (_0x58d1bb === 1) {
-        const _0x524bca = tryGunzip(_0x228782);
-        if (_0x524bca) {
-          _0x228782 = _0x524bca;
+  if (tmp4.length > 5) {
+    const tmp02 = tmp4[0];
+    const tmp1 = tmp4.readUInt32BE(1);
+    if (tmp1 === tmp4.length - 5 && tmp02 <= 1) {
+      let tmp03 = tmp4.slice(5);
+      if (tmp02 === 1) {
+        const tmp04 = tryGunzip(tmp03);
+        if (tmp04) {
+          tmp03 = tmp04;
         }
       }
-      return _0x228782;
+      return tmp03;
     }
   }
-  return _0x3b6e50;
+  return tmp4;
 }
 export function emptyResponse() {
   return gzipSync(Buffer.alloc(0));
 }
-export function wrapUnary(_0x416b8b) {
-  return gzipSync(_0x416b8b);
+export function wrapUnary(arg0) {
+  return gzipSync(arg0);
 }
 export function unaryHeaders() {
   return {

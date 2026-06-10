@@ -1,34 +1,34 @@
-import _0x5802b5 from "node:https";
-import _0x4ce406 from "node:http";
+import https from "node:https";
+import http from "node:http";
 import { stripProtocol, parseHost, isLocalTarget } from "../net-utils.js";
 import { slotField, sanitizeThinkingEffort } from "./byok-slots.js";
 const _initialAnthropicHost = stripProtocol(process.env.ANTHROPIC_API_HOST || "");
 const _initialOpenaiHost = stripProtocol(process.env.OPENAI_API_HOST || _initialAnthropicHost);
-function readSlotConfigFromEnv(_0x4c2fd1, _0x5f0a8b = null) {
-  const _0x2e8b1a = stripProtocol(process.env[slotField(_0x4c2fd1, "ANTHROPIC_API_HOST")] || "");
-  const _0x1f4c90 = process.env[slotField(_0x4c2fd1, "ANTHROPIC_API_KEY")] || "";
-  const _0x39e0d2 = process.env[slotField(_0x4c2fd1, "ANTHROPIC_API_PATH")] || "/v1/messages";
-  const _0x4ab21e = stripProtocol(process.env[slotField(_0x4c2fd1, "OPENAI_API_HOST")] || _0x2e8b1a);
-  const _0x52d8f4 = process.env[slotField(_0x4c2fd1, "OPENAI_API_KEY")] || _0x1f4c90;
-  const _0x6c8a11 = process.env[slotField(_0x4c2fd1, "OPENAI_API_PATH")] || "/v1/responses";
-  const _0x7b2e44 = String(process.env[slotField(_0x4c2fd1, "MODEL")] || "").trim();
-  const _0x8f3c21 = sanitizeThinkingEffort(process.env[slotField(_0x4c2fd1, "THINKING_EFFORT")] || "");
-  const _0x31f6de = {
-    anthropicHost: _0x2e8b1a,
-    anthropicApiPath: _0x39e0d2,
-    anthropicApiKey: _0x1f4c90,
-    openaiHost: _0x4ab21e,
-    openaiApiPath: _0x6c8a11,
-    openaiApiKey: _0x52d8f4,
-    model: _0x7b2e44,
-    thinkingEffort: _0x8f3c21
+function readSlotConfigFromEnv(arg0, tmp1 = null) {
+  const tmp2 = stripProtocol(process.env[slotField(arg0, "ANTHROPIC_API_HOST")] || "");
+  const tmp3 = process.env[slotField(arg0, "ANTHROPIC_API_KEY")] || "";
+  const tmp4 = process.env[slotField(arg0, "ANTHROPIC_API_PATH")] || "/v1/messages";
+  const tmp5 = stripProtocol(process.env[slotField(arg0, "OPENAI_API_HOST")] || tmp2);
+  const tmp6 = process.env[slotField(arg0, "OPENAI_API_KEY")] || tmp3;
+  const tmp7 = process.env[slotField(arg0, "OPENAI_API_PATH")] || "/v1/responses";
+  const tmp8 = String(process.env[slotField(arg0, "MODEL")] || "").trim();
+  const tmp9 = sanitizeThinkingEffort(process.env[slotField(arg0, "THINKING_EFFORT")] || "");
+  const tmp10 = {
+    anthropicHost: tmp2,
+    anthropicApiPath: tmp4,
+    anthropicApiKey: tmp3,
+    openaiHost: tmp5,
+    openaiApiPath: tmp7,
+    openaiApiKey: tmp6,
+    model: tmp8,
+    thinkingEffort: tmp9
   };
-  if (!_0x31f6de.anthropicHost && !_0x31f6de.anthropicApiKey && !_0x31f6de.model && _0x5f0a8b) {
+  if (!tmp10.anthropicHost && !tmp10.anthropicApiKey && !tmp10.model && tmp1) {
     return {
-      ..._0x5f0a8b
+      ...tmp1
     };
   }
-  return _0x31f6de;
+  return tmp10;
 }
 const _legacySlotFallback = {
   anthropicHost: _initialAnthropicHost,
@@ -50,23 +50,23 @@ const _emptySlot = {
   model: "",
   thinkingEffort: ""
 };
-function sanitizeReasoningEffort(_0x5b4734) {
-  const _0x311973 = String(_0x5b4734 ?? "").trim();
-  if (["", "low", "medium", "high", "xhigh", "max"].includes(_0x311973)) {
-    return _0x311973;
+function sanitizeReasoningEffort(arg0) {
+  const tmp1 = String(arg0 ?? "").trim();
+  if (["", "low", "medium", "high", "xhigh", "max"].includes(tmp1)) {
+    return tmp1;
   } else {
     return "medium";
   }
 }
-function sanitizeBooleanString(_0x41b625) {
-  return String(_0x41b625 ?? "").trim().toLowerCase() === "true";
+function sanitizeBooleanString(arg0) {
+  return String(arg0 ?? "").trim().toLowerCase() === "true";
 }
-function sanitizePositiveInteger(_0x77df2e, _0x5626f7, _0x1575c2 = 1, _0x1e4fda = Number.MAX_SAFE_INTEGER) {
-  const _0x45c56b = Number.parseInt(String(_0x77df2e ?? ""), 10);
-  if (!Number.isInteger(_0x45c56b) || _0x45c56b < _0x1575c2) {
-    return _0x5626f7;
+function sanitizePositiveInteger(arg0, arg1, tmp2 = 1, tmp3 = Number.MAX_SAFE_INTEGER) {
+  const tmp4 = Number.parseInt(String(arg0 ?? ""), 10);
+  if (!Number.isInteger(tmp4) || tmp4 < tmp2) {
+    return arg1;
   }
-  return Math.min(_0x45c56b, _0x1e4fda);
+  return Math.min(tmp4, tmp3);
 }
 let _runtimeConfig = {
   defaultModel: process.env.DEFAULT_MODEL || "",
@@ -83,147 +83,147 @@ let _runtimeConfig = {
   byok1: readSlotConfigFromEnv(1, _legacySlotFallback),
   byok2: readSlotConfigFromEnv(2, _emptySlot)
 };
-function buildProviderFromSlot(_0x2f6d8a) {
-  const _0x4986e5 = stripProtocol(_0x2f6d8a.anthropicHost || "");
-  const _0x307450 = stripProtocol(_0x2f6d8a.openaiHost || _0x4986e5);
-  const _0x2a7129 = parseHost(_0x4986e5);
-  const _0x56516e = parseHost(_0x307450);
+function buildProviderFromSlot(arg0) {
+  const tmp1 = stripProtocol(arg0.anthropicHost || "");
+  const tmp2 = stripProtocol(arg0.openaiHost || tmp1);
+  const tmp3 = parseHost(tmp1);
+  const tmp4 = parseHost(tmp2);
   return {
     anthropic: {
-      host: _0x4986e5,
-      apiPath: _0x2f6d8a.anthropicApiPath || "/v1/messages",
-      apiKey: _0x2f6d8a.anthropicApiKey || "",
-      parsed: _0x2a7129,
-      useHttp: isLocalTarget(_0x4986e5)
+      host: tmp1,
+      apiPath: arg0.anthropicApiPath || "/v1/messages",
+      apiKey: arg0.anthropicApiKey || "",
+      parsed: tmp3,
+      useHttp: isLocalTarget(tmp1)
     },
     openai: {
-      host: _0x307450,
-      apiPath: _0x2f6d8a.openaiApiPath || "/v1/responses",
-      apiKey: _0x2f6d8a.openaiApiKey || _0x2f6d8a.anthropicApiKey || "",
-      parsed: _0x56516e,
-      useHttp: isLocalTarget(_0x307450)
+      host: tmp2,
+      apiPath: arg0.openaiApiPath || "/v1/responses",
+      apiKey: arg0.openaiApiKey || arg0.anthropicApiKey || "",
+      parsed: tmp4,
+      useHttp: isLocalTarget(tmp2)
     }
   };
 }
 function syncLegacyFromByok1() {
-  const _0x1a2b3c = _runtimeConfig.byok1;
-  _runtimeConfig.anthropicHost = _0x1a2b3c.anthropicHost;
-  _runtimeConfig.anthropicApiPath = _0x1a2b3c.anthropicApiPath;
-  _runtimeConfig.anthropicApiKey = _0x1a2b3c.anthropicApiKey;
-  _runtimeConfig.openaiHost = _0x1a2b3c.openaiHost;
-  _runtimeConfig.openaiApiPath = _0x1a2b3c.openaiApiPath;
-  _runtimeConfig.openaiApiKey = _0x1a2b3c.openaiApiKey;
-  _runtimeConfig.defaultModel = _0x1a2b3c.model;
+  const tmp0 = _runtimeConfig.byok1;
+  _runtimeConfig.anthropicHost = tmp0.anthropicHost;
+  _runtimeConfig.anthropicApiPath = tmp0.anthropicApiPath;
+  _runtimeConfig.anthropicApiKey = tmp0.anthropicApiKey;
+  _runtimeConfig.openaiHost = tmp0.openaiHost;
+  _runtimeConfig.openaiApiPath = tmp0.openaiApiPath;
+  _runtimeConfig.openaiApiKey = tmp0.openaiApiKey;
+  _runtimeConfig.defaultModel = tmp0.model;
 }
 syncLegacyFromByok1();
-export function getSlotRuntime(_0x5c4a11) {
-  return _0x5c4a11 === 2 ? {
+export function getSlotRuntime(arg0) {
+  return arg0 === 2 ? {
     ..._runtimeConfig.byok2
   } : {
     ..._runtimeConfig.byok1
   };
 }
-export function getSlotModel(_0x3ef812) {
-  return getSlotRuntime(_0x3ef812).model || "";
+export function getSlotModel(arg0) {
+  return getSlotRuntime(arg0).model || "";
 }
-export function getSlotThinkingEffort(_0x3ef812) {
-  return getSlotRuntime(_0x3ef812).thinkingEffort || "";
+export function getSlotThinkingEffort(arg0) {
+  return getSlotRuntime(arg0).thinkingEffort || "";
 }
 export function getRuntimeConfig() {
-  const _0x4d6e9f = {
+  const tmp0 = {
     ..._runtimeConfig
   };
-  return _0x4d6e9f;
+  return tmp0;
 }
-export function getProviderConfig(_0x4c2fd1 = null) {
-  if (_0x4c2fd1 === 1 || _0x4c2fd1 === 2) {
-    return buildProviderFromSlot(getSlotRuntime(_0x4c2fd1));
+export function getProviderConfig(tmp0 = null) {
+  if (tmp0 === 1 || tmp0 === 2) {
+    return buildProviderFromSlot(getSlotRuntime(tmp0));
   }
   return buildProviderFromSlot(_runtimeConfig.byok1);
 }
-function setStringField(_0x1fc2b9, _0x5a27b1, _0x25f98b, _0x32f741 = _0x5c4f69 => _0x5c4f69) {
-  if (!Object.prototype.hasOwnProperty.call(_0x1fc2b9, _0x5a27b1)) {
+function setStringField(arg0, arg1, arg2, fn = arg02 => arg02) {
+  if (!Object.prototype.hasOwnProperty.call(arg0, arg1)) {
     return false;
   }
-  const _0x4ff17f = _0x32f741(String(_0x1fc2b9[_0x5a27b1] ?? "").trim());
-  if (_runtimeConfig[_0x25f98b] === _0x4ff17f) {
+  const tmp4 = fn(String(arg0[arg1] ?? "").trim());
+  if (_runtimeConfig[arg2] === tmp4) {
     return false;
   }
-  _runtimeConfig[_0x25f98b] = _0x4ff17f;
+  _runtimeConfig[arg2] = tmp4;
   return true;
 }
-function setSlotStringField(_0x1fc2b9, _0x5a27b1, _0x4c2fd1, _0x25f98b, _0x32f741 = _0x5c4f69 => _0x5c4f69) {
-  if (!Object.prototype.hasOwnProperty.call(_0x1fc2b9, _0x5a27b1)) {
+function setSlotStringField(arg0, arg1, arg2, arg3, fn = arg02 => arg02) {
+  if (!Object.prototype.hasOwnProperty.call(arg0, arg1)) {
     return false;
   }
-  const _0x4ff17f = _0x32f741(String(_0x1fc2b9[_0x5a27b1] ?? "").trim());
-  const _0x3a8f12 = _0x4c2fd1 === 2 ? "byok2" : "byok1";
-  if (_runtimeConfig[_0x3a8f12][_0x25f98b] === _0x4ff17f) {
+  const tmp5 = fn(String(arg0[arg1] ?? "").trim());
+  const tmp6 = arg2 === 2 ? "byok2" : "byok1";
+  if (_runtimeConfig[tmp6][arg3] === tmp5) {
     return false;
   }
-  _runtimeConfig[_0x3a8f12][_0x25f98b] = _0x4ff17f;
+  _runtimeConfig[tmp6][arg3] = tmp5;
   return true;
 }
-function applySlotPatch(_0x2f8ea3, _0x4c2fd1) {
-  let _0x4e8aac = false;
-  const _0x5b8e01 = slotField(_0x4c2fd1, "");
-  _0x4e8aac = setSlotStringField(_0x2f8ea3, _0x5b8e01 + "ANTHROPIC_API_HOST", _0x4c2fd1, "anthropicHost", stripProtocol) || _0x4e8aac;
-  _0x4e8aac = setSlotStringField(_0x2f8ea3, _0x5b8e01 + "ANTHROPIC_API_PATH", _0x4c2fd1, "anthropicApiPath") || _0x4e8aac;
-  _0x4e8aac = setSlotStringField(_0x2f8ea3, _0x5b8e01 + "ANTHROPIC_API_KEY", _0x4c2fd1, "anthropicApiKey") || _0x4e8aac;
-  _0x4e8aac = setSlotStringField(_0x2f8ea3, _0x5b8e01 + "OPENAI_API_HOST", _0x4c2fd1, "openaiHost", stripProtocol) || _0x4e8aac;
-  _0x4e8aac = setSlotStringField(_0x2f8ea3, _0x5b8e01 + "OPENAI_API_PATH", _0x4c2fd1, "openaiApiPath") || _0x4e8aac;
-  _0x4e8aac = setSlotStringField(_0x2f8ea3, _0x5b8e01 + "OPENAI_API_KEY", _0x4c2fd1, "openaiApiKey") || _0x4e8aac;
-  if (Object.prototype.hasOwnProperty.call(_0x2f8ea3, _0x5b8e01 + "MODEL")) {
-    const _0x7b2e44 = typeof _0x2f8ea3[_0x5b8e01 + "MODEL"] === "string" ? _0x2f8ea3[_0x5b8e01 + "MODEL"].trim() : "";
-    const _0x3a8f12 = _0x4c2fd1 === 2 ? "byok2" : "byok1";
-    if (_runtimeConfig[_0x3a8f12].model !== _0x7b2e44) {
-      _runtimeConfig[_0x3a8f12].model = _0x7b2e44;
-      _0x4e8aac = true;
+function applySlotPatch(arg0, arg1) {
+  let tmp2 = false;
+  const tmp3 = slotField(arg1, "");
+  tmp2 = setSlotStringField(arg0, tmp3 + "ANTHROPIC_API_HOST", arg1, "anthropicHost", stripProtocol) || tmp2;
+  tmp2 = setSlotStringField(arg0, tmp3 + "ANTHROPIC_API_PATH", arg1, "anthropicApiPath") || tmp2;
+  tmp2 = setSlotStringField(arg0, tmp3 + "ANTHROPIC_API_KEY", arg1, "anthropicApiKey") || tmp2;
+  tmp2 = setSlotStringField(arg0, tmp3 + "OPENAI_API_HOST", arg1, "openaiHost", stripProtocol) || tmp2;
+  tmp2 = setSlotStringField(arg0, tmp3 + "OPENAI_API_PATH", arg1, "openaiApiPath") || tmp2;
+  tmp2 = setSlotStringField(arg0, tmp3 + "OPENAI_API_KEY", arg1, "openaiApiKey") || tmp2;
+  if (Object.prototype.hasOwnProperty.call(arg0, tmp3 + "MODEL")) {
+    const tmp0 = typeof arg0[tmp3 + "MODEL"] === "string" ? arg0[tmp3 + "MODEL"].trim() : "";
+    const tmp1 = arg1 === 2 ? "byok2" : "byok1";
+    if (_runtimeConfig[tmp1].model !== tmp0) {
+      _runtimeConfig[tmp1].model = tmp0;
+      tmp2 = true;
     }
   }
-  if (Object.prototype.hasOwnProperty.call(_0x2f8ea3, _0x5b8e01 + "THINKING_EFFORT")) {
-    const _0x8f3c21 = sanitizeThinkingEffort(_0x2f8ea3[_0x5b8e01 + "THINKING_EFFORT"]);
-    const _0x3a8f12 = _0x4c2fd1 === 2 ? "byok2" : "byok1";
-    if (_runtimeConfig[_0x3a8f12].thinkingEffort !== _0x8f3c21) {
-      _runtimeConfig[_0x3a8f12].thinkingEffort = _0x8f3c21;
-      _0x4e8aac = true;
+  if (Object.prototype.hasOwnProperty.call(arg0, tmp3 + "THINKING_EFFORT")) {
+    const tmp0 = sanitizeThinkingEffort(arg0[tmp3 + "THINKING_EFFORT"]);
+    const tmp1 = arg1 === 2 ? "byok2" : "byok1";
+    if (_runtimeConfig[tmp1].thinkingEffort !== tmp0) {
+      _runtimeConfig[tmp1].thinkingEffort = tmp0;
+      tmp2 = true;
     }
   }
-  return _0x4e8aac;
+  return tmp2;
 }
-export function setRuntimeConfig(_0x2f8ea3) {
-  if (Object.prototype.hasOwnProperty.call(_0x2f8ea3, "defaultModel")) {
-    _runtimeConfig.defaultModel = typeof _0x2f8ea3.defaultModel === "string" ? _0x2f8ea3.defaultModel.trim() : "";
+export function setRuntimeConfig(arg0) {
+  if (Object.prototype.hasOwnProperty.call(arg0, "defaultModel")) {
+    _runtimeConfig.defaultModel = typeof arg0.defaultModel === "string" ? arg0.defaultModel.trim() : "";
   }
-  if (_0x2f8ea3.maxTokens && Number.isInteger(_0x2f8ea3.maxTokens) && _0x2f8ea3.maxTokens > 0) {
-    _runtimeConfig.maxTokens = _0x2f8ea3.maxTokens;
+  if (arg0.maxTokens && Number.isInteger(arg0.maxTokens) && arg0.maxTokens > 0) {
+    _runtimeConfig.maxTokens = arg0.maxTokens;
   }
-  let _0x4e8aac = false;
-  _0x4e8aac = applySlotPatch(_0x2f8ea3, 1) || _0x4e8aac;
-  _0x4e8aac = applySlotPatch(_0x2f8ea3, 2) || _0x4e8aac;
-  _0x4e8aac = setStringField(_0x2f8ea3, "ANTHROPIC_API_HOST", "anthropicHost", stripProtocol) || _0x4e8aac;
-  _0x4e8aac = setStringField(_0x2f8ea3, "ANTHROPIC_API_PATH", "anthropicApiPath") || _0x4e8aac;
-  _0x4e8aac = setStringField(_0x2f8ea3, "ANTHROPIC_API_KEY", "anthropicApiKey") || _0x4e8aac;
-  _0x4e8aac = setStringField(_0x2f8ea3, "OPENAI_API_HOST", "openaiHost", stripProtocol) || _0x4e8aac;
-  _0x4e8aac = setStringField(_0x2f8ea3, "OPENAI_API_PATH", "openaiApiPath") || _0x4e8aac;
-  _0x4e8aac = setStringField(_0x2f8ea3, "OPENAI_API_KEY", "openaiApiKey") || _0x4e8aac;
-  if (Object.prototype.hasOwnProperty.call(_0x2f8ea3, "DEFAULT_MODEL")) {
-    const _0x7b2e44 = typeof _0x2f8ea3.DEFAULT_MODEL === "string" ? _0x2f8ea3.DEFAULT_MODEL.trim() : "";
-    if (_runtimeConfig.byok1.model !== _0x7b2e44) {
-      _runtimeConfig.byok1.model = _0x7b2e44;
-      _0x4e8aac = true;
+  let tmp1 = false;
+  tmp1 = applySlotPatch(arg0, 1) || tmp1;
+  tmp1 = applySlotPatch(arg0, 2) || tmp1;
+  tmp1 = setStringField(arg0, "ANTHROPIC_API_HOST", "anthropicHost", stripProtocol) || tmp1;
+  tmp1 = setStringField(arg0, "ANTHROPIC_API_PATH", "anthropicApiPath") || tmp1;
+  tmp1 = setStringField(arg0, "ANTHROPIC_API_KEY", "anthropicApiKey") || tmp1;
+  tmp1 = setStringField(arg0, "OPENAI_API_HOST", "openaiHost", stripProtocol) || tmp1;
+  tmp1 = setStringField(arg0, "OPENAI_API_PATH", "openaiApiPath") || tmp1;
+  tmp1 = setStringField(arg0, "OPENAI_API_KEY", "openaiApiKey") || tmp1;
+  if (Object.prototype.hasOwnProperty.call(arg0, "DEFAULT_MODEL")) {
+    const tmp0 = typeof arg0.DEFAULT_MODEL === "string" ? arg0.DEFAULT_MODEL.trim() : "";
+    if (_runtimeConfig.byok1.model !== tmp0) {
+      _runtimeConfig.byok1.model = tmp0;
+      tmp1 = true;
     }
   }
-  setStringField(_0x2f8ea3, "OPENAI_REASONING_EFFORT", "openaiReasoningEffort", sanitizeReasoningEffort);
-  if (Object.prototype.hasOwnProperty.call(_0x2f8ea3, "OPENAI_THINKING_ENABLED")) {
-    _runtimeConfig.openaiThinkingEnabled = _0x2f8ea3.OPENAI_THINKING_ENABLED === true || sanitizeBooleanString(_0x2f8ea3.OPENAI_THINKING_ENABLED);
+  setStringField(arg0, "OPENAI_REASONING_EFFORT", "openaiReasoningEffort", sanitizeReasoningEffort);
+  if (Object.prototype.hasOwnProperty.call(arg0, "OPENAI_THINKING_ENABLED")) {
+    _runtimeConfig.openaiThinkingEnabled = arg0.OPENAI_THINKING_ENABLED === true || sanitizeBooleanString(arg0.OPENAI_THINKING_ENABLED);
   }
-  const _0x42ed7e = Number.parseInt(String(_0x2f8ea3.COMPLETION_TIMEOUT_MS ?? ""), 10);
-  if (Number.isInteger(_0x42ed7e) && _0x42ed7e > 0) {
-    _runtimeConfig.completionTimeoutMs = Math.min(Math.max(_0x42ed7e, 2000), 60000);
+  const tmp2 = Number.parseInt(String(arg0.COMPLETION_TIMEOUT_MS ?? ""), 10);
+  if (Number.isInteger(tmp2) && tmp2 > 0) {
+    _runtimeConfig.completionTimeoutMs = Math.min(Math.max(tmp2, 2000), 60000);
   }
   syncLegacyFromByok1();
-  if (_0x4e8aac) {
+  if (tmp1) {
     _cache = {
       anthropic: null,
       openai: null,
@@ -242,10 +242,10 @@ export function setRuntimeConfig(_0x2f8ea3) {
       }
     };
   }
-  const _0x4a870c = {
+  const tmp3 = {
     ..._runtimeConfig
   };
-  return _0x4a870c;
+  return tmp3;
 }
 const CACHE_TTL_MS = 300000;
 let _cache = {
@@ -265,301 +265,301 @@ let _slotCache = {
     ts: 0
   }
 };
-function isCacheValid(_0x4c2fd1 = null) {
-  const _0x3f8a12 = _0x4c2fd1 === 1 || _0x4c2fd1 === 2 ? _slotCache[_0x4c2fd1] : _cache;
-  return _0x3f8a12.ts > 0 && Date.now() - _0x3f8a12.ts < CACHE_TTL_MS;
+function isCacheValid(tmp0 = null) {
+  const tmp1 = tmp0 === 1 || tmp0 === 2 ? _slotCache[tmp0] : _cache;
+  return tmp1.ts > 0 && Date.now() - tmp1.ts < CACHE_TTL_MS;
 }
-function httpsGetJson(_0x3ad2ec, _0x484fda, _0x3feba3, _0x5bd3dc = 15000, _0x3599eb = false) {
-  const _0x446707 = parseHost(_0x3ad2ec);
-  const _0x379dc5 = _0x3599eb || _0x446707.port !== 443;
-  const _0x17ce63 = _0x379dc5 ? _0x4ce406 : _0x5802b5;
-  const _0xf8c459 = _0x379dc5 && _0x446707.port === 443 ? 80 : _0x446707.port;
-  return new Promise((_0x31b14d, _0x2172b7) => {
-    const _0x3722fe = {
-      hostname: _0x446707.hostname,
-      port: _0xf8c459,
-      path: _0x484fda,
+function httpsGetJson(arg0, arg1, arg2, tmp3 = 15000, tmp4 = false) {
+  const tmp5 = parseHost(arg0);
+  const tmp6 = tmp4 || tmp5.port !== 443;
+  const tmp7 = tmp6 ? http : https;
+  const tmp8 = tmp6 && tmp5.port === 443 ? 80 : tmp5.port;
+  return new Promise((fn, fn2) => {
+    const tmp2 = {
+      hostname: tmp5.hostname,
+      port: tmp8,
+      path: arg1,
       method: "GET",
-      headers: _0x3feba3
+      headers: arg2
     };
-    const _0xafa90a = _0x3722fe;
-    if (!_0x379dc5) {
-      _0xafa90a.rejectUnauthorized = !isLocalTarget(_0x3ad2ec);
+    const tmp32 = tmp2;
+    if (!tmp6) {
+      tmp32.rejectUnauthorized = !isLocalTarget(arg0);
     }
-    const _0x33f0ff = _0x17ce63.request(_0xafa90a, _0x4f5e82 => {
-      let _0x319443 = "";
-      _0x4f5e82.setEncoding("utf8");
-      _0x4f5e82.on("data", _0x329f69 => _0x319443 += _0x329f69);
-      _0x4f5e82.on("end", () => {
-        if (_0x4f5e82.statusCode !== 200) {
-          _0x2172b7(new Error("HTTP " + _0x4f5e82.statusCode + ": " + _0x319443.slice(0, 300)));
+    const tmp42 = tmp7.request(tmp32, arg02 => {
+      let tmp1 = "";
+      arg02.setEncoding("utf8");
+      arg02.on("data", arg03 => tmp1 += arg03);
+      arg02.on("end", () => {
+        if (arg02.statusCode !== 200) {
+          fn2(new Error("HTTP " + arg02.statusCode + ": " + tmp1.slice(0, 300)));
           return;
         }
         try {
-          _0x31b14d(JSON.parse(_0x319443));
-        } catch (_0xa907dc) {
-          _0x2172b7(new Error("JSON parse error: " + _0xa907dc.message));
+          fn(JSON.parse(tmp1));
+        } catch (tmp0) {
+          fn2(new Error("JSON parse error: " + tmp0.message));
         }
       });
     });
-    _0x33f0ff.setTimeout(_0x5bd3dc, () => {
-      _0x33f0ff.destroy();
-      _0x2172b7(new Error("timeout"));
+    tmp42.setTimeout(tmp3, () => {
+      tmp42.destroy();
+      fn2(new Error("timeout"));
     });
-    _0x33f0ff.on("error", _0x2172b7);
-    _0x33f0ff.end();
+    tmp42.on("error", fn2);
+    tmp42.end();
   });
 }
-async function fetchAnthropicModels(_0x4c2fd1 = null) {
-  const _0x67cb06 = getProviderConfig(_0x4c2fd1).anthropic;
-  if (!_0x67cb06.apiKey) {
+async function fetchAnthropicModels(tmp0 = null) {
+  const tmp1 = getProviderConfig(tmp0).anthropic;
+  if (!tmp1.apiKey) {
     return [];
   }
   try {
-    const _0x570623 = await httpsGetJson(_0x67cb06.host, "/v1/models", {
-      "x-api-key": _0x67cb06.apiKey,
+    const tmp02 = await httpsGetJson(tmp1.host, "/v1/models", {
+      "x-api-key": tmp1.apiKey,
       "anthropic-version": "2023-06-01"
-    }, 15000, _0x67cb06.useHttp);
-    const _0x422c0a = (_0x570623.data || _0x570623.models || []).map(_0x48c414 => ({
-      id: _0x48c414.id,
-      name: _0x48c414.display_name || _0x48c414.id,
+    }, 15000, tmp1.useHttp);
+    const tmp12 = (tmp02.data || tmp02.models || []).map(arg0 => ({
+      id: arg0.id,
+      name: arg0.display_name || arg0.id,
       provider: "anthropic",
-      created: _0x48c414.created_at || _0x48c414.created || null
+      created: arg0.created_at || arg0.created || null
     }));
-    _0x422c0a.sort((_0x551c16, _0x303c21) => _0x551c16.id.localeCompare(_0x303c21.id));
-    return _0x422c0a;
-  } catch (_0x423621) {
-    console.error("  ❌ Fetch Anthropic models failed: " + _0x423621.message);
+    tmp12.sort((arg0, arg1) => arg0.id.localeCompare(arg1.id));
+    return tmp12;
+  } catch (tmp02) {
+    console.error("  ❌ Fetch Anthropic models failed: " + tmp02.message);
     return [];
   }
 }
-async function fetchOpenAIModels(_0x4c2fd1 = null) {
-  const _0x321905 = getProviderConfig(_0x4c2fd1).openai;
-  if (!_0x321905.apiKey) {
+async function fetchOpenAIModels(tmp0 = null) {
+  const tmp1 = getProviderConfig(tmp0).openai;
+  if (!tmp1.apiKey) {
     return [];
   }
   try {
-    const _0x43f6c8 = await httpsGetJson(_0x321905.host, "/v1/models", {
-      authorization: "Bearer " + _0x321905.apiKey
-    }, 15000, _0x321905.useHttp);
-    const _0x566d23 = (_0x43f6c8.data || _0x43f6c8.models || []).map(_0x16f110 => ({
-      id: _0x16f110.id,
-      name: _0x16f110.id,
+    const tmp02 = await httpsGetJson(tmp1.host, "/v1/models", {
+      authorization: "Bearer " + tmp1.apiKey
+    }, 15000, tmp1.useHttp);
+    const tmp12 = (tmp02.data || tmp02.models || []).map(arg0 => ({
+      id: arg0.id,
+      name: arg0.id,
       provider: "openai",
-      created: _0x16f110.created ? new Date(_0x16f110.created * 1000).toISOString() : null,
-      owned_by: _0x16f110.owned_by || null
+      created: arg0.created ? new Date(arg0.created * 1000).toISOString() : null,
+      owned_by: arg0.owned_by || null
     }));
-    _0x566d23.sort((_0x35f59b, _0x1a1f99) => _0x35f59b.id.localeCompare(_0x1a1f99.id));
-    return _0x566d23;
-  } catch (_0x379a01) {
-    console.error("  ❌ Fetch OpenAI models failed: " + _0x379a01.message);
+    tmp12.sort((arg0, arg1) => arg0.id.localeCompare(arg1.id));
+    return tmp12;
+  } catch (tmp02) {
+    console.error("  ❌ Fetch OpenAI models failed: " + tmp02.message);
     return [];
   }
 }
-async function getAllModels(_0x4a6497 = false, _0x4c2fd1 = null) {
-  const _0x3f8a12 = _0x4c2fd1 === 1 || _0x4c2fd1 === 2 ? _slotCache[_0x4c2fd1] : _cache;
-  if (!_0x4a6497 && isCacheValid(_0x4c2fd1)) {
-    const _0x15ced4 = {
-      anthropic: _0x3f8a12.anthropic,
-      openai: _0x3f8a12.openai
+async function getAllModels(tmp0 = false, tmp1 = null) {
+  const tmp2 = tmp1 === 1 || tmp1 === 2 ? _slotCache[tmp1] : _cache;
+  if (!tmp0 && isCacheValid(tmp1)) {
+    const tmp02 = {
+      anthropic: tmp2.anthropic,
+      openai: tmp2.openai
     };
-    return _0x15ced4;
+    return tmp02;
   }
-  const [_0x1f0f03, _0x39ab48] = await Promise.all([fetchAnthropicModels(_0x4c2fd1), fetchOpenAIModels(_0x4c2fd1)]);
-  const _0x5d1c44 = {
-    anthropic: _0x1f0f03,
-    openai: _0x39ab48,
+  const [tmp3, tmp4] = await Promise.all([fetchAnthropicModels(tmp1), fetchOpenAIModels(tmp1)]);
+  const tmp5 = {
+    anthropic: tmp3,
+    openai: tmp4,
     ts: Date.now()
   };
-  if (_0x4c2fd1 === 1 || _0x4c2fd1 === 2) {
-    _slotCache[_0x4c2fd1] = _0x5d1c44;
+  if (tmp1 === 1 || tmp1 === 2) {
+    _slotCache[tmp1] = tmp5;
   } else {
-    _cache = _0x5d1c44;
+    _cache = tmp5;
   }
-  const _0x2e6677 = {
-    anthropic: _0x1f0f03,
-    openai: _0x39ab48
+  const tmp6 = {
+    anthropic: tmp3,
+    openai: tmp4
   };
-  return _0x2e6677;
+  return tmp6;
 }
-function getAllowedOrigin(_0x4cf5bf) {
-  const _0x442b64 = _0x4cf5bf.headers.origin || "";
-  if (!_0x442b64) {
+function getAllowedOrigin(arg0) {
+  const tmp1 = arg0.headers.origin || "";
+  if (!tmp1) {
     return "*";
   }
   try {
-    const _0x2ba6a1 = new URL(_0x442b64);
-    if (_0x2ba6a1.hostname === "localhost" || _0x2ba6a1.hostname === "127.0.0.1" || _0x2ba6a1.hostname === "::1") {
-      return _0x442b64;
+    const tmp0 = new URL(tmp1);
+    if (tmp0.hostname === "localhost" || tmp0.hostname === "127.0.0.1" || tmp0.hostname === "::1") {
+      return tmp1;
     }
   } catch {}
   return "null";
 }
-function corsHeaders(_0x5174bc) {
+function corsHeaders(arg0) {
   return {
-    "access-control-allow-origin": getAllowedOrigin(_0x5174bc),
+    "access-control-allow-origin": getAllowedOrigin(arg0),
     "access-control-allow-methods": "GET, POST, OPTIONS",
     "access-control-allow-headers": "content-type, authorization, x-admin-token",
     vary: "Origin"
   };
 }
-function jsonResponse(_0x131f30, _0x556fe3, _0x53dc02, _0x2c355a) {
-  const _0x423944 = JSON.stringify(_0x2c355a, null, 2);
-  _0x556fe3.writeHead(_0x53dc02, {
+function jsonResponse(arg0, arg1, arg2, arg3) {
+  const tmp4 = JSON.stringify(arg3, null, 2);
+  arg1.writeHead(arg2, {
     "content-type": "application/json",
-    ...corsHeaders(_0x131f30)
+    ...corsHeaders(arg0)
   });
-  _0x556fe3.end(_0x423944);
+  arg1.end(tmp4);
 }
-export async function handleModelsRequest(_0x2f88a8, _0x541283, _0x4dda89) {
-  if (_0x2f88a8.method === "OPTIONS") {
-    _0x541283.writeHead(204, corsHeaders(_0x2f88a8));
-    _0x541283.end();
+export async function handleModelsRequest(arg0, arg1, arg2) {
+  if (arg0.method === "OPTIONS") {
+    arg1.writeHead(204, corsHeaders(arg0));
+    arg1.end();
     return;
   }
-  const _0x4f0a12 = new URL(_0x2f88a8.url, "http://localhost");
-  const _0x4367a9 = _0x4f0a12.searchParams.get("refresh") === "1";
-  const _0x7c2d11 = Number.parseInt(String(_0x4f0a12.searchParams.get("slot") || ""), 10);
-  const _0x4c2fd1 = _0x7c2d11 === 1 || _0x7c2d11 === 2 ? _0x7c2d11 : null;
+  const tmp3 = new URL(arg0.url, "http://localhost");
+  const tmp4 = tmp3.searchParams.get("refresh") === "1";
+  const tmp5 = Number.parseInt(String(tmp3.searchParams.get("slot") || ""), 10);
+  const tmp6 = tmp5 === 1 || tmp5 === 2 ? tmp5 : null;
   try {
-    if (_0x4dda89 === "/api/models" || _0x4dda89 === "/api/models/") {
+    if (arg2 === "/api/models" || arg2 === "/api/models/") {
       const {
-        anthropic: _0x310450,
-        openai: _0x22127e
-      } = await getAllModels(_0x4367a9, _0x4c2fd1);
-      const _0x5e8062 = getProviderConfig(_0x4c2fd1);
-      const _0x25c2c2 = {
-        host: _0x5e8062.anthropic.host,
-        count: _0x310450.length,
-        models: _0x310450
+        anthropic: tmp0,
+        openai: tmp1
+      } = await getAllModels(tmp4, tmp6);
+      const tmp2 = getProviderConfig(tmp6);
+      const tmp32 = {
+        host: tmp2.anthropic.host,
+        count: tmp0.length,
+        models: tmp0
       };
-      const _0x267fad = {
-        host: _0x5e8062.openai.host,
-        count: _0x22127e.length,
-        models: _0x22127e
+      const tmp42 = {
+        host: tmp2.openai.host,
+        count: tmp1.length,
+        models: tmp1
       };
-      const _0x21d4e6 = {
-        anthropic: _0x25c2c2,
-        openai: _0x267fad
+      const tmp52 = {
+        anthropic: tmp32,
+        openai: tmp42
       };
-      jsonResponse(_0x2f88a8, _0x541283, 200, {
-        slot: _0x4c2fd1,
-        defaultModel: _0x4c2fd1 ? getSlotModel(_0x4c2fd1) : _runtimeConfig.defaultModel,
-        providers: _0x21d4e6,
-        total: _0x310450.length + _0x22127e.length
+      jsonResponse(arg0, arg1, 200, {
+        slot: tmp6,
+        defaultModel: tmp6 ? getSlotModel(tmp6) : _runtimeConfig.defaultModel,
+        providers: tmp52,
+        total: tmp0.length + tmp1.length
       });
-    } else if (_0x4dda89 === "/api/models/anthropic") {
+    } else if (arg2 === "/api/models/anthropic") {
       const {
-        anthropic: _0x51841a
-      } = await getAllModels(_0x4367a9);
-      jsonResponse(_0x2f88a8, _0x541283, 200, {
+        anthropic: tmp0
+      } = await getAllModels(tmp4);
+      jsonResponse(arg0, arg1, 200, {
         provider: "anthropic",
         host: getProviderConfig().anthropic.host,
-        models: _0x51841a
+        models: tmp0
       });
-    } else if (_0x4dda89 === "/api/models/openai") {
+    } else if (arg2 === "/api/models/openai") {
       const {
-        openai: _0x52800a
-      } = await getAllModels(_0x4367a9);
-      jsonResponse(_0x2f88a8, _0x541283, 200, {
+        openai: tmp0
+      } = await getAllModels(tmp4);
+      jsonResponse(arg0, arg1, 200, {
         provider: "openai",
         host: getProviderConfig().openai.host,
-        models: _0x52800a
+        models: tmp0
       });
     } else {
-      jsonResponse(_0x2f88a8, _0x541283, 404, {
+      jsonResponse(arg0, arg1, 404, {
         error: "Not found"
       });
     }
-  } catch (_0x19aa1f) {
-    console.error("  ❌ /api/models error: " + _0x19aa1f.message);
-    const _0x5d57cc = {
-      error: _0x19aa1f.message
+  } catch (tmp0) {
+    console.error("  ❌ /api/models error: " + tmp0.message);
+    const tmp1 = {
+      error: tmp0.message
     };
-    jsonResponse(_0x2f88a8, _0x541283, 500, _0x5d57cc);
+    jsonResponse(arg0, arg1, 500, tmp1);
   }
 }
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "";
 const ALLOW_UNAUTH_CONFIG_POST = process.env.ALLOW_UNAUTH_CONFIG_POST === "true";
-export async function handleConfigRequest(_0x2b546d, _0x4ea31b) {
-  if (_0x2b546d.method === "OPTIONS") {
-    _0x4ea31b.writeHead(204, corsHeaders(_0x2b546d));
-    _0x4ea31b.end();
+export async function handleConfigRequest(arg0, arg1) {
+  if (arg0.method === "OPTIONS") {
+    arg1.writeHead(204, corsHeaders(arg0));
+    arg1.end();
     return;
   }
-  if (_0x2b546d.method === "GET") {
-    const _0x5dd6dd = getProviderConfig();
-    const _0x1cbbcf = {
-      host: _0x5dd6dd.anthropic.host,
-      hasKey: !!_0x5dd6dd.anthropic.apiKey
+  if (arg0.method === "GET") {
+    const tmp0 = getProviderConfig();
+    const tmp1 = {
+      host: tmp0.anthropic.host,
+      hasKey: !!tmp0.anthropic.apiKey
     };
-    const _0x44cb2e = {
-      host: _0x5dd6dd.openai.host,
-      hasKey: !!_0x5dd6dd.openai.apiKey
+    const tmp2 = {
+      host: tmp0.openai.host,
+      hasKey: !!tmp0.openai.apiKey
     };
-    const _0x30be49 = {
-      anthropic: _0x1cbbcf,
-      openai: _0x44cb2e
+    const tmp3 = {
+      anthropic: tmp1,
+      openai: tmp2
     };
-    const _0x25b809 = {
+    const tmp4 = {
       ..._runtimeConfig
     };
-    _0x25b809.providers = _0x30be49;
-    jsonResponse(_0x2b546d, _0x4ea31b, 200, _0x25b809);
+    tmp4.providers = tmp3;
+    jsonResponse(arg0, arg1, 200, tmp4);
     return;
   }
-  if (_0x2b546d.method === "POST") {
+  if (arg0.method === "POST") {
     if (ADMIN_TOKEN) {
-      const _0x282208 = _0x2b546d.headers.authorization || "";
-      const _0x40e052 = _0x282208.startsWith("Bearer ") ? _0x282208.slice(7) : _0x2b546d.headers["x-admin-token"] || "";
-      if (_0x40e052 !== ADMIN_TOKEN) {
-        return jsonResponse(_0x2b546d, _0x4ea31b, 403, {
+      const tmp02 = arg0.headers.authorization || "";
+      const tmp12 = tmp02.startsWith("Bearer ") ? tmp02.slice(7) : arg0.headers["x-admin-token"] || "";
+      if (tmp12 !== ADMIN_TOKEN) {
+        return jsonResponse(arg0, arg1, 403, {
           error: "Forbidden: invalid ADMIN_TOKEN"
         });
       }
     } else if (!ALLOW_UNAUTH_CONFIG_POST) {
-      const _0x4982f5 = _0x2b546d.socket?.remoteAddress || "";
-      const _0x2b436d = _0x4982f5 === "127.0.0.1" || _0x4982f5 === "::1" || _0x4982f5 === "::ffff:127.0.0.1";
-      if (!_0x2b436d) {
-        return jsonResponse(_0x2b546d, _0x4ea31b, 403, {
+      const tmp02 = arg0.socket?.remoteAddress || "";
+      const tmp12 = tmp02 === "127.0.0.1" || tmp02 === "::1" || tmp02 === "::ffff:127.0.0.1";
+      if (!tmp12) {
+        return jsonResponse(arg0, arg1, 403, {
           error: "Forbidden: set ADMIN_TOKEN or use localhost"
         });
       }
     }
-    const _0x1d7a09 = 16384;
-    let _0x2af9cd = "";
-    let _0x212eaf = false;
-    _0x2b546d.setEncoding("utf8");
-    _0x2b546d.on("data", _0x3e8330 => {
-      _0x2af9cd += _0x3e8330;
-      if (_0x2af9cd.length > _0x1d7a09 && !_0x212eaf) {
-        _0x212eaf = true;
-        const _0x1ada73 = {
-          error: "Body too large (max " + _0x1d7a09 + " bytes)"
+    const tmp0 = 16384;
+    let tmp1 = "";
+    let tmp2 = false;
+    arg0.setEncoding("utf8");
+    arg0.on("data", arg02 => {
+      tmp1 += arg02;
+      if (tmp1.length > tmp0 && !tmp2) {
+        tmp2 = true;
+        const tmp02 = {
+          error: "Body too large (max " + tmp0 + " bytes)"
         };
-        jsonResponse(_0x2b546d, _0x4ea31b, 413, _0x1ada73);
-        _0x2b546d.destroy();
+        jsonResponse(arg0, arg1, 413, tmp02);
+        arg0.destroy();
       }
     });
-    _0x2b546d.on("end", () => {
-      if (_0x212eaf) {
+    arg0.on("end", () => {
+      if (tmp2) {
         return;
       }
       try {
-        const _0x1f7a53 = JSON.parse(_0x2af9cd);
-        const _0x2e545f = setRuntimeConfig(_0x1f7a53);
-        console.log("  ⚙️  Config updated: model=" + _0x2e545f.defaultModel + ", maxTokens=" + _0x2e545f.maxTokens);
-        jsonResponse(_0x2b546d, _0x4ea31b, 200, _0x2e545f);
-      } catch (_0x2cb658) {
-        const _0x1b6d9a = {
-          error: "Invalid JSON: " + _0x2cb658.message
+        const tmp02 = JSON.parse(tmp1);
+        const tmp12 = setRuntimeConfig(tmp02);
+        console.log("  ⚙️  Config updated: model=" + tmp12.defaultModel + ", maxTokens=" + tmp12.maxTokens);
+        jsonResponse(arg0, arg1, 200, tmp12);
+      } catch (tmp02) {
+        const tmp12 = {
+          error: "Invalid JSON: " + tmp02.message
         };
-        jsonResponse(_0x2b546d, _0x4ea31b, 400, _0x1b6d9a);
+        jsonResponse(arg0, arg1, 400, tmp12);
       }
     });
     return;
   }
-  jsonResponse(_0x2b546d, _0x4ea31b, 405, {
+  jsonResponse(arg0, arg1, 405, {
     error: "Method not allowed"
   });
 }

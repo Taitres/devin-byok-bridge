@@ -1,16 +1,16 @@
-import _0x1fee6b from "node:http2";
-import _0x5d1b1d from "node:https";
+import http2 from "node:http2";
+import https from "node:https";
 import { handleGetChatMessage } from "./handlers/chat.js";
 import { handleGetCompletions } from "./handlers/completions.js";
 import { getProviderConfig, getRuntimeConfig, setRuntimeConfig } from "./handlers/models.js";
 import { getLoopbackListenHosts, loopbackApiUrl } from "./net-utils.js";
-function parsePortEnv(_0x31579a, _0x304fc2) {
-  const _0x315d6c = process.env[_0x31579a];
-  const _0x55f16c = parseInt(String(_0x315d6c ?? ""), 10);
-  if (Number.isInteger(_0x55f16c) && _0x55f16c > 0 && _0x55f16c <= 65535) {
-    return _0x55f16c;
+function parsePortEnv(arg0, arg1) {
+  const tmp2 = process.env[arg0];
+  const tmp3 = parseInt(String(tmp2 ?? ""), 10);
+  if (Number.isInteger(tmp3) && tmp3 > 0 && tmp3 <= 65535) {
+    return tmp3;
   } else {
-    return _0x304fc2;
+    return arg1;
   }
 }
 const PORT = parsePortEnv("INFERENCE_PORT", 3001);
@@ -22,325 +22,325 @@ const HOP_BY_HOP_RESPONSE_HEADERS = new Set(["connection", "keep-alive", "proxy-
 function now() {
   return new Date().toISOString().slice(11, 23);
 }
-function toHttp2ResponseHeaders(_0x2633ed, _0x4d9dde = {}) {
-  const _0x52ec5e = {
-    ":status": _0x2633ed
+function toHttp2ResponseHeaders(arg0, tmp1 = {}) {
+  const tmp2 = {
+    ":status": arg0
   };
-  const _0x1eabb4 = _0x52ec5e;
-  for (const [_0x4989ff, _0x416bbd] of Object.entries(_0x4d9dde)) {
-    const _0x18b9d3 = _0x4989ff.toLowerCase();
-    if (HOP_BY_HOP_RESPONSE_HEADERS.has(_0x18b9d3) || _0x18b9d3.startsWith(":")) {
+  const tmp3 = tmp2;
+  for (const [tmp02, tmp12] of Object.entries(tmp1)) {
+    const tmp03 = tmp02.toLowerCase();
+    if (HOP_BY_HOP_RESPONSE_HEADERS.has(tmp03) || tmp03.startsWith(":")) {
       continue;
     }
-    _0x1eabb4[_0x18b9d3] = _0x416bbd;
+    tmp3[tmp03] = tmp12;
   }
-  return _0x1eabb4;
+  return tmp3;
 }
-function respondJson(_0x4b70f7, _0x12e3a1, _0x599ef0) {
-  if (_0x4b70f7.destroyed) {
+function respondJson(arg0, arg1, arg2) {
+  if (arg0.destroyed) {
     return;
   }
-  const _0x6bbdac = JSON.stringify(_0x599ef0, null, 2);
+  const tmp3 = JSON.stringify(arg2, null, 2);
   try {
-    _0x4b70f7.respond({
-      ":status": _0x12e3a1,
+    arg0.respond({
+      ":status": arg1,
       "content-type": "application/json",
-      "content-length": Buffer.byteLength(_0x6bbdac)
+      "content-length": Buffer.byteLength(tmp3)
     });
-    _0x4b70f7.end(_0x6bbdac);
+    arg0.end(tmp3);
   } catch {}
 }
-function handleRuntimeConfigStream(_0x4f8937, _0x153b95) {
-  const _0x12beac = _0x153b95[":method"] || "GET";
-  if (_0x12beac === "GET") {
-    const _0x4ce375 = getProviderConfig();
-    const _0x47165d = {
-      host: _0x4ce375.anthropic.host,
-      hasKey: !!_0x4ce375.anthropic.apiKey
+function handleRuntimeConfigStream(arg0, arg1) {
+  const tmp2 = arg1[":method"] || "GET";
+  if (tmp2 === "GET") {
+    const tmp02 = getProviderConfig();
+    const tmp1 = {
+      host: tmp02.anthropic.host,
+      hasKey: !!tmp02.anthropic.apiKey
     };
-    const _0x3d8967 = {
-      host: _0x4ce375.openai.host,
-      hasKey: !!_0x4ce375.openai.apiKey
+    const tmp22 = {
+      host: tmp02.openai.host,
+      hasKey: !!tmp02.openai.apiKey
     };
-    const _0x5cb7cb = {
-      anthropic: _0x47165d,
-      openai: _0x3d8967
+    const tmp32 = {
+      anthropic: tmp1,
+      openai: tmp22
     };
-    respondJson(_0x4f8937, 200, {
+    respondJson(arg0, 200, {
       ...getRuntimeConfig(),
-      providers: _0x5cb7cb
+      providers: tmp32
     });
     return;
   }
-  if (_0x12beac !== "POST") {
-    respondJson(_0x4f8937, 405, {
+  if (tmp2 !== "POST") {
+    respondJson(arg0, 405, {
       error: "Method not allowed"
     });
     return;
   }
-  const _0x5848a3 = [];
-  let _0x5bd1be = 0;
-  let _0x3fc593 = false;
-  const _0x70b417 = 16384;
-  _0x4f8937.on("data", _0x39381a => {
-    if (_0x3fc593) {
+  const tmp3 = [];
+  let tmp4 = 0;
+  let tmp5 = false;
+  const tmp6 = 16384;
+  arg0.on("data", arg02 => {
+    if (tmp5) {
       return;
     }
-    _0x5bd1be += _0x39381a.length;
-    if (_0x5bd1be > _0x70b417) {
-      _0x3fc593 = true;
-      const _0x1db470 = {
-        error: "Body too large (max " + _0x70b417 + " bytes)"
+    tmp4 += arg02.length;
+    if (tmp4 > tmp6) {
+      tmp5 = true;
+      const tmp02 = {
+        error: "Body too large (max " + tmp6 + " bytes)"
       };
-      respondJson(_0x4f8937, 413, _0x1db470);
-      _0x4f8937.close();
+      respondJson(arg0, 413, tmp02);
+      arg0.close();
       return;
     }
-    _0x5848a3.push(_0x39381a);
+    tmp3.push(arg02);
   });
-  _0x4f8937.on("end", () => {
-    if (_0x3fc593) {
+  arg0.on("end", () => {
+    if (tmp5) {
       return;
     }
     try {
-      const _0x41fe3f = JSON.parse(Buffer.concat(_0x5848a3).toString("utf8") || "{}");
-      const _0x2bdc0a = setRuntimeConfig(_0x41fe3f);
-      console.log("[" + now() + "] inference config updated: model=" + _0x2bdc0a.defaultModel + ", maxTokens=" + _0x2bdc0a.maxTokens);
-      respondJson(_0x4f8937, 200, _0x2bdc0a);
-    } catch (_0x254b41) {
-      const _0x1ffb08 = {
-        error: "Invalid JSON: " + _0x254b41.message
+      const tmp02 = JSON.parse(Buffer.concat(tmp3).toString("utf8") || "{}");
+      const tmp1 = setRuntimeConfig(tmp02);
+      console.log("[" + now() + "] inference config updated: model=" + tmp1.defaultModel + ", maxTokens=" + tmp1.maxTokens);
+      respondJson(arg0, 200, tmp1);
+    } catch (tmp02) {
+      const tmp1 = {
+        error: "Invalid JSON: " + tmp02.message
       };
-      respondJson(_0x4f8937, 400, _0x1ffb08);
+      respondJson(arg0, 400, tmp1);
     }
   });
-  _0x4f8937.on("error", _0x3eb1fe => {
-    if (_0x3eb1fe.code === "ERR_HTTP2_STREAM_ERROR") {
+  arg0.on("error", arg02 => {
+    if (arg02.code === "ERR_HTTP2_STREAM_ERROR") {
       return;
     }
-    console.error("[" + now() + "] config stream error: " + _0x3eb1fe.message);
+    console.error("[" + now() + "] config stream error: " + arg02.message);
   });
 }
-function forwardToCodeium(_0xf2b9cc, _0x3a7a4, _0x6fa480, _0x45e7ee, _0x63ea35) {
-  const _0x1fb791 = {};
-  for (const [_0x25727e, _0xba3517] of Object.entries(_0x6fa480)) {
-    if (_0x25727e.startsWith(":") || _0x25727e === "host") {
+function forwardToCodeium(arg0, arg1, arg2, arg3, arg4) {
+  const tmp5 = {};
+  for (const [tmp02, tmp1] of Object.entries(arg2)) {
+    if (tmp02.startsWith(":") || tmp02 === "host") {
       continue;
     }
-    _0x1fb791[_0x25727e] = _0xba3517;
+    tmp5[tmp02] = tmp1;
   }
-  _0x1fb791.host = UPSTREAM;
-  _0x1fb791["content-length"] = _0xf2b9cc.length;
-  let _0x2d249d = false;
-  const _0x168289 = {
+  tmp5.host = UPSTREAM;
+  tmp5["content-length"] = arg0.length;
+  let tmp6 = false;
+  const tmp7 = {
     hostname: UPSTREAM,
     port: 443,
-    path: _0x45e7ee,
+    path: arg3,
     method: "POST",
-    headers: _0x1fb791
+    headers: tmp5
   };
-  const _0x9b3c40 = _0x5d1b1d.request(_0x168289, _0x5344e3 => {
-    const _0x4840b4 = {
-      ":status": _0x5344e3.statusCode
+  const tmp8 = https.request(tmp7, arg02 => {
+    const tmp1 = {
+      ":status": arg02.statusCode
     };
-    const _0x22bb22 = _0x4840b4;
-    for (const [_0x3fcf97, _0x5a1776] of Object.entries(_0x5344e3.headers)) {
-      const _0x39604c = _0x3fcf97.toLowerCase();
-      if (HOP_BY_HOP_RESPONSE_HEADERS.has(_0x39604c) || _0x39604c.startsWith(":")) {
+    const tmp2 = tmp1;
+    for (const [tmp02, tmp12] of Object.entries(arg02.headers)) {
+      const tmp03 = tmp02.toLowerCase();
+      if (HOP_BY_HOP_RESPONSE_HEADERS.has(tmp03) || tmp03.startsWith(":")) {
         continue;
       }
-      _0x22bb22[_0x39604c] = _0x5a1776;
+      tmp2[tmp03] = tmp12;
     }
-    if (!_0x3a7a4.destroyed) {
+    if (!arg1.destroyed) {
       try {
-        _0x3a7a4.respond(_0x22bb22);
-        _0x2d249d = true;
+        arg1.respond(tmp2);
+        tmp6 = true;
       } catch {}
     }
-    _0x5344e3.on("data", _0x5329d0 => {
-      if (!_0x3a7a4.destroyed) {
-        _0x3a7a4.write(_0x5329d0);
+    arg02.on("data", arg03 => {
+      if (!arg1.destroyed) {
+        arg1.write(arg03);
       }
     });
-    _0x5344e3.on("end", () => {
-      if (!_0x3a7a4.destroyed) {
-        _0x3a7a4.end();
+    arg02.on("end", () => {
+      if (!arg1.destroyed) {
+        arg1.end();
       }
-      console.log("  [#" + _0x63ea35 + "] ✅ forwarded");
+      console.log("  [#" + arg4 + "] ✅ forwarded");
     });
-    _0x5344e3.on("error", _0x2a010b => {
-      console.error("  [#" + _0x63ea35 + "] ❌ fwd error: " + _0x2a010b.message);
-      if (!_0x3a7a4.destroyed) {
-        _0x3a7a4.end();
+    arg02.on("error", arg03 => {
+      console.error("  [#" + arg4 + "] ❌ fwd error: " + arg03.message);
+      if (!arg1.destroyed) {
+        arg1.end();
       }
     });
   });
-  _0x9b3c40.on("error", _0x1a46dd => {
-    console.error("  [#" + _0x63ea35 + "] ❌ upstream error: " + _0x1a46dd.message);
-    if (!_0x3a7a4.destroyed) {
-      if (!_0x2d249d) {
+  tmp8.on("error", arg02 => {
+    console.error("  [#" + arg4 + "] ❌ upstream error: " + arg02.message);
+    if (!arg1.destroyed) {
+      if (!tmp6) {
         try {
-          _0x3a7a4.respond({
+          arg1.respond({
             ":status": 502
           });
         } catch {}
       }
-      _0x3a7a4.end();
+      arg1.end();
     }
   });
-  _0x9b3c40.end(_0xf2b9cc);
+  tmp8.end(arg0);
 }
-function buildFakeReqRes(_0xfa8007, _0x3a1777) {
-  const _0x56a92e = {
-    ..._0x3a1777
+function buildFakeReqRes(arg0, arg1) {
+  const tmp2 = {
+    ...arg1
   };
-  const _0x1a3c1d = {
-    headers: _0x56a92e,
-    url: _0x3a1777[":path"] || "/",
-    method: _0x3a1777[":method"] || "POST"
+  const tmp3 = {
+    headers: tmp2,
+    url: arg1[":path"] || "/",
+    method: arg1[":method"] || "POST"
   };
-  const _0x5cb954 = _0x1a3c1d;
-  let _0x4025f3 = false;
-  const _0x5302b3 = {
+  const tmp4 = tmp3;
+  let tmp5 = false;
+  const tmp6 = {
     headersSent: false,
     writableEnded: false,
-    writeHead(_0x6596c3, _0x411d66 = {}) {
-      if (_0x4025f3) {
+    writeHead(tmp02, tmp1 = {}) {
+      if (tmp5) {
         return;
       }
-      _0x4025f3 = true;
+      tmp5 = true;
       this.headersSent = true;
-      const _0xef1951 = toHttp2ResponseHeaders(_0x6596c3, _0x411d66);
+      const tmp22 = toHttp2ResponseHeaders(tmp02, tmp1);
       try {
-        _0xfa8007.respond(_0xef1951);
+        arg0.respond(tmp22);
       } catch {}
     },
-    write(_0x20e82d) {
-      if (!_0x4025f3) {
+    write(tmp02) {
+      if (!tmp5) {
         this.writeHead(200);
       }
-      if (!_0xfa8007.destroyed) {
+      if (!arg0.destroyed) {
         try {
-          _0xfa8007.write(_0x20e82d);
+          arg0.write(tmp02);
         } catch {}
       }
     },
-    end(_0x29dc32) {
-      if (!_0x4025f3) {
+    end(tmp02) {
+      if (!tmp5) {
         this.writeHead(200);
       }
       this.writableEnded = true;
-      if (!_0xfa8007.destroyed) {
+      if (!arg0.destroyed) {
         try {
-          _0xfa8007.end(_0x29dc32);
+          arg0.end(tmp02);
         } catch {}
       }
     },
-    on(_0x5c8463, _0x3e456f) {
-      if (_0x5c8463 === "close") {
-        _0xfa8007.on("close", _0x3e456f);
+    on(tmp02, tmp1) {
+      if (tmp02 === "close") {
+        arg0.on("close", tmp1);
       }
     }
   };
-  const _0x1ac8e3 = {
-    fakeReq: _0x5cb954,
-    fakeRes: _0x5302b3
+  const tmp7 = {
+    fakeReq: tmp4,
+    fakeRes: tmp6
   };
-  return _0x1ac8e3;
+  return tmp7;
 }
-function adaptStreamForHandler(_0x4fd9b3, _0x4ebf18, _0x29c9d3, _0x15fd31) {
+function adaptStreamForHandler(arg0, arg1, arg2, arg3) {
   const {
-    fakeReq: _0x55c200,
-    fakeRes: _0x2337da
-  } = buildFakeReqRes(_0x4ebf18, _0x29c9d3);
-  if (_0x15fd31 === "completions") {
-    handleGetCompletions(_0x55c200, _0x2337da, _0x4fd9b3);
+    fakeReq: tmp4,
+    fakeRes: tmp5
+  } = buildFakeReqRes(arg1, arg2);
+  if (arg3 === "completions") {
+    handleGetCompletions(tmp4, tmp5, arg0);
   } else {
-    handleGetChatMessage(_0x55c200, _0x2337da, _0x4fd9b3);
+    handleGetChatMessage(tmp4, tmp5, arg0);
   }
 }
-const server = _0x1fee6b.createServer();
-function attachInferenceStreamHandler(_0xsrv) {
-  _0xsrv.on("stream", (_0x423917, _0x22665d) => {
-  const _0x5c4e20 = ++reqCount;
-  const _0x250004 = _0x22665d[":method"] || "GET";
-  const _0xb18fb2 = _0x22665d[":path"] || "/";
-  const _0x122f07 = _0x22665d["content-type"] || "";
-  const _0xd373c7 = _0xb18fb2.split("/").pop();
-  if (_0xb18fb2 === "/api/config") {
-    handleRuntimeConfigStream(_0x423917, _0x22665d);
-    return;
-  }
-  if (_0x250004 !== "POST" || !_0x122f07.includes("connect+proto")) {
-    _0x423917.respond({
-      ":status": 404
-    });
-    _0x423917.end();
-    return;
-  }
-  const _0x2184c9 = [];
-  _0x423917.on("data", _0x260ec1 => _0x2184c9.push(_0x260ec1));
-  _0x423917.on("end", () => {
-    const _0x1d8579 = Buffer.concat(_0x2184c9);
-    console.log("[" + now() + "] #" + _0x5c4e20 + " " + _0xd373c7 + " (" + _0x1d8579.length + "b)");
-    if (INTERCEPT_PATHS.has(_0xb18fb2)) {
-      const _0x339af7 = _0xd373c7 === "GetCompletions" ? "completions" : "chat";
-      console.log("  ⚡ → API (" + _0x339af7 + ")");
-      try {
-        adaptStreamForHandler(_0x1d8579, _0x423917, _0x22665d, _0x339af7);
-      } catch (_0x379754) {
-        console.error("  ❌ Handler error: " + _0x379754.message);
-        if (!_0x423917.destroyed) {
-          _0x423917.respond({
-            ":status": 500,
-            "content-type": "application/json"
-          });
-          const _0xc0ab35 = {
-            code: "internal",
-            message: _0x379754.message
-          };
-          _0x423917.end(JSON.stringify(_0xc0ab35));
-        }
-      }
-    } else {
-      console.log("  → " + UPSTREAM + _0xb18fb2);
-      forwardToCodeium(_0x1d8579, _0x423917, _0x22665d, _0xb18fb2, _0x5c4e20);
-    }
-  });
-  _0x423917.on("error", _0x2fbb51 => {
-    if (_0x2fbb51.code === "ERR_HTTP2_STREAM_ERROR") {
+const server = http2.createServer();
+function attachInferenceStreamHandler(arg0) {
+  arg0.on("stream", (arg02, arg1) => {
+    const tmp2 = ++reqCount;
+    const tmp3 = arg1[":method"] || "GET";
+    const tmp4 = arg1[":path"] || "/";
+    const tmp5 = arg1["content-type"] || "";
+    const tmp6 = tmp4.split("/").pop();
+    if (tmp4 === "/api/config") {
+      handleRuntimeConfigStream(arg02, arg1);
       return;
     }
-    console.error("[" + now() + "] #" + _0x5c4e20 + " stream error: " + _0x2fbb51.message);
-  });
+    if (tmp3 !== "POST" || !tmp5.includes("connect+proto")) {
+      arg02.respond({
+        ":status": 404
+      });
+      arg02.end();
+      return;
+    }
+    const tmp7 = [];
+    arg02.on("data", arg03 => tmp7.push(arg03));
+    arg02.on("end", () => {
+      const tmp02 = Buffer.concat(tmp7);
+      console.log("[" + now() + "] #" + tmp2 + " " + tmp6 + " (" + tmp02.length + "b)");
+      if (INTERCEPT_PATHS.has(tmp4)) {
+        const tmp03 = tmp6 === "GetCompletions" ? "completions" : "chat";
+        console.log("  ⚡ → API (" + tmp03 + ")");
+        try {
+          adaptStreamForHandler(tmp02, arg02, arg1, tmp03);
+        } catch (tmp04) {
+          console.error("  ❌ Handler error: " + tmp04.message);
+          if (!arg02.destroyed) {
+            arg02.respond({
+              ":status": 500,
+              "content-type": "application/json"
+            });
+            const tmp05 = {
+              code: "internal",
+              message: tmp04.message
+            };
+            arg02.end(JSON.stringify(tmp05));
+          }
+        }
+      } else {
+        console.log("  → " + UPSTREAM + tmp4);
+        forwardToCodeium(tmp02, arg02, arg1, tmp4, tmp2);
+      }
+    });
+    arg02.on("error", arg03 => {
+      if (arg03.code === "ERR_HTTP2_STREAM_ERROR") {
+        return;
+      }
+      console.error("[" + now() + "] #" + tmp2 + " stream error: " + arg03.message);
+    });
   });
 }
 attachInferenceStreamHandler(server);
-function onInferenceError(_0x514df6) {
-  if (_0x514df6.code === "EADDRINUSE") {
+function onInferenceError(arg0) {
+  if (arg0.code === "EADDRINUSE") {
     console.error("Port " + PORT + " in use. Kill existing: lsof -ti:" + PORT + " | xargs kill");
   } else {
-    console.error("Server error:", _0x514df6);
+    console.error("Server error:", arg0);
   }
   process.exit(1);
 }
 function printInferenceReady() {
-  const _0xbindHosts = getLoopbackListenHosts(BIND_HOST);
+  const tmp02 = getLoopbackListenHosts(BIND_HOST);
   console.log("\n⚡ Devin BYOK Bridge inference on " + loopbackApiUrl(PORT));
-  console.log("   Bind hosts: " + _0xbindHosts.join(", "));
+  console.log("   Bind hosts: " + tmp02.join(", "));
   console.log("\n   GetChatMessage  → Anthropic API (inline AI edit)");
   console.log("   GetCompletions → Anthropic API (code completion)");
   console.log("   Everything else         → " + UPSTREAM + "\n");
 }
-const _0xbindHosts = getLoopbackListenHosts(BIND_HOST);
-if (_0xbindHosts.length === 1) {
-  server.listen(PORT, _0xbindHosts[0], printInferenceReady);
+const tmp0 = getLoopbackListenHosts(BIND_HOST);
+if (tmp0.length === 1) {
+  server.listen(PORT, tmp0[0], printInferenceReady);
   server.on("error", onInferenceError);
 } else {
-  server.listen(PORT, _0xbindHosts[0], () => {});
+  server.listen(PORT, tmp0[0], () => {});
   server.on("error", onInferenceError);
-  const serverV6 = _0x1fee6b.createServer();
+  const serverV6 = http2.createServer();
   attachInferenceStreamHandler(serverV6);
-  serverV6.listen(PORT, _0xbindHosts[1], printInferenceReady);
+  serverV6.listen(PORT, tmp0[1], printInferenceReady);
   serverV6.on("error", onInferenceError);
 }

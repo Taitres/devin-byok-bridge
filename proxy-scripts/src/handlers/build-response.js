@@ -8,51 +8,51 @@ export const STOP_REASON = {
   ERROR: 13
 };
 function buildTimestamp() {
-  const _0x23b200 = Date.now();
-  const _0x36818e = Math.floor(_0x23b200 / 1000);
-  const _0x261f94 = _0x23b200 % 1000 * 1000000;
-  return Buffer.concat([writeVarintField(1, _0x36818e), writeVarintField(2, _0x261f94)]);
+  const tmp0 = Date.now();
+  const tmp1 = Math.floor(tmp0 / 1000);
+  const tmp2 = tmp0 % 1000 * 1000000;
+  return Buffer.concat([writeVarintField(1, tmp1), writeVarintField(2, tmp2)]);
 }
-function writeDoubleField(_0x21617e, _0xb2fffe) {
-  const _0x2f233a = Buffer.alloc(8);
-  _0x2f233a.writeDoubleBE(_0xb2fffe, 0);
-  _0x2f233a.swap64();
-  return writeFixed64Field(_0x21617e, _0x2f233a);
+function writeDoubleField(arg0, arg1) {
+  const tmp2 = Buffer.alloc(8);
+  tmp2.writeDoubleBE(arg1, 0);
+  tmp2.swap64();
+  return writeFixed64Field(arg0, tmp2);
 }
-export function buildTextDelta(_0x5aabe7, _0x2febf4, _0x45fde0) {
-  const _0x1a56af = [writeStringField(1, _0x5aabe7), writeMessageField(2, buildTimestamp())];
-  if (_0x2febf4) {
-    _0x1a56af.push(writeStringField(3, _0x2febf4));
+export function buildTextDelta(arg0, arg1, arg2) {
+  const tmp3 = [writeStringField(1, arg0), writeMessageField(2, buildTimestamp())];
+  if (arg1) {
+    tmp3.push(writeStringField(3, arg1));
   }
-  if (_0x45fde0 > 0) {
-    _0x1a56af.push(writeVarintField(4, _0x45fde0));
+  if (arg2 > 0) {
+    tmp3.push(writeVarintField(4, arg2));
   }
-  return Buffer.concat(_0x1a56af);
+  return Buffer.concat(tmp3);
 }
-export function buildThinkingDelta(_0xf99857, _0x27e505) {
-  return Buffer.concat([writeStringField(1, _0xf99857), writeMessageField(2, buildTimestamp()), writeStringField(9, _0x27e505)]);
+export function buildThinkingDelta(arg0, arg1) {
+  return Buffer.concat([writeStringField(1, arg0), writeMessageField(2, buildTimestamp()), writeStringField(9, arg1)]);
 }
-export function buildToolCallDelta(_0x1c5c00, _0x33ed5e) {
-  const _0xdc046b = [writeStringField(1, _0x1c5c00), writeMessageField(2, buildTimestamp())];
-  for (const _0x3c31f4 of _0x33ed5e) {
-    const _0xb0102b = Buffer.concat([writeStringField(1, _0x3c31f4.id ?? ""), writeStringField(2, _0x3c31f4.name ?? ""), writeStringField(3, _0x3c31f4.arguments_json ?? "")]);
-    _0xdc046b.push(writeMessageField(6, _0xb0102b));
+export function buildToolCallDelta(arg0, arg1) {
+  const tmp2 = [writeStringField(1, arg0), writeMessageField(2, buildTimestamp())];
+  for (const tmp0 of arg1) {
+    const tmp02 = Buffer.concat([writeStringField(1, tmp0.id ?? ""), writeStringField(2, tmp0.name ?? ""), writeStringField(3, tmp0.arguments_json ?? "")]);
+    tmp2.push(writeMessageField(6, tmp02));
   }
-  return Buffer.concat(_0xdc046b);
+  return Buffer.concat(tmp2);
 }
-export function buildStopChunk(_0x1bd62b, _0x3c5d29, _0x41b251, _0xfcc60f) {
-  const _0x378f71 = [writeStringField(1, _0x1bd62b), writeMessageField(2, buildTimestamp()), writeVarintField(5, _0x3c5d29)];
-  if (_0xfcc60f !== undefined && _0xfcc60f !== null) {
-    _0x378f71.push(writeDoubleField(12, _0xfcc60f));
+export function buildStopChunk(arg0, arg1, arg2, arg3) {
+  const tmp4 = [writeStringField(1, arg0), writeMessageField(2, buildTimestamp()), writeVarintField(5, arg1)];
+  if (arg3 !== undefined && arg3 !== null) {
+    tmp4.push(writeDoubleField(12, arg3));
   }
-  if (_0x41b251) {
-    _0x378f71.push(writeStringField(20, _0x41b251));
+  if (arg2) {
+    tmp4.push(writeStringField(20, arg2));
   }
-  return Buffer.concat(_0x378f71);
+  return Buffer.concat(tmp4);
 }
-export function buildSignatureDelta(_0x5a79fc, _0x1e6902) {
-  return Buffer.concat([writeStringField(1, _0x5a79fc), writeMessageField(2, buildTimestamp()), writeStringField(10, _0x1e6902)]);
+export function buildSignatureDelta(arg0, arg1) {
+  return Buffer.concat([writeStringField(1, arg0), writeMessageField(2, buildTimestamp()), writeStringField(10, arg1)]);
 }
-export function buildErrorChunk(_0x5adc88, _0x2d2958) {
-  return Buffer.concat([writeStringField(1, _0x5adc88), writeMessageField(2, buildTimestamp()), writeStringField(3, _0x2d2958), writeVarintField(5, STOP_REASON.ERROR)]);
+export function buildErrorChunk(arg0, arg1) {
+  return Buffer.concat([writeStringField(1, arg0), writeMessageField(2, buildTimestamp()), writeStringField(3, arg1), writeVarintField(5, STOP_REASON.ERROR)]);
 }

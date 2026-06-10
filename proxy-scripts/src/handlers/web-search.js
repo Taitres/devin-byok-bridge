@@ -1,166 +1,166 @@
-import _0x372a8a from "node:https";
-import _0x5f0373 from "node:http";
-import _0x9f70ff from "node:crypto";
+import https from "node:https";
+import http from "node:http";
+import crypto from "node:crypto";
 import { URL } from "node:url";
 import { writeStringField, writeVarintField, writeMessageField, parseFields, getField } from "../proto.js";
 import { wrapUnary, unaryHeaders, unwrapRequest } from "../connect.js";
-function searchDuckDuckGo(_0x2f644f, _0x3e8847 = 8) {
-  return new Promise((_0x5567b1, _0x155c25) => {
-    const _0x1fe5a2 = "q=" + encodeURIComponent(_0x2f644f);
-    const _0x352f62 = _0x372a8a.request({
+function searchDuckDuckGo(arg0, tmp1 = 8) {
+  return new Promise((fn, fn2) => {
+    const tmp2 = "q=" + encodeURIComponent(arg0);
+    const tmp3 = https.request({
       hostname: "html.duckduckgo.com",
       path: "/html/",
       method: "POST",
       headers: {
         "content-type": "application/x-www-form-urlencoded",
-        "content-length": Buffer.byteLength(_0x1fe5a2),
+        "content-length": Buffer.byteLength(tmp2),
         "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
       }
-    }, _0x412028 => {
-      let _0x115ccd = "";
-      _0x412028.setEncoding("utf8");
-      _0x412028.on("data", _0x21c343 => _0x115ccd += _0x21c343);
-      _0x412028.on("end", () => {
+    }, arg02 => {
+      let tmp12 = "";
+      arg02.setEncoding("utf8");
+      arg02.on("data", arg03 => tmp12 += arg03);
+      arg02.on("end", () => {
         try {
-          const _0x3d362c = parseDDGResults(_0x115ccd, _0x3e8847);
-          _0x5567b1(_0x3d362c);
-        } catch (_0x4fedd0) {
-          _0x155c25(_0x4fedd0);
+          const tmp0 = parseDDGResults(tmp12, tmp1);
+          fn(tmp0);
+        } catch (tmp0) {
+          fn2(tmp0);
         }
       });
     });
-    _0x352f62.on("error", _0x155c25);
-    _0x352f62.setTimeout(10000, () => {
-      _0x352f62.destroy();
-      _0x155c25(new Error("DDG timeout"));
+    tmp3.on("error", fn2);
+    tmp3.setTimeout(10000, () => {
+      tmp3.destroy();
+      fn2(new Error("DDG timeout"));
     });
-    _0x352f62.end(_0x1fe5a2);
+    tmp3.end(tmp2);
   });
 }
-function parseDDGResults(_0x58d6d0, _0x295c49) {
-  const _0x14cbc0 = [];
-  const _0x3a5fe4 = /class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
-  const _0x5d3a9a = /class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g;
-  const _0x52a7ea = [];
-  let _0x270e41;
-  while ((_0x270e41 = _0x3a5fe4.exec(_0x58d6d0)) !== null) {
-    const _0x33be58 = {
-      url: _0x270e41[1],
-      rawTitle: _0x270e41[2]
+function parseDDGResults(arg0, arg1) {
+  const tmp2 = [];
+  const tmp3 = /class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
+  const tmp4 = /class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g;
+  const tmp5 = [];
+  let tmp6;
+  while ((tmp6 = tmp3.exec(arg0)) !== null) {
+    const tmp0 = {
+      url: tmp6[1],
+      rawTitle: tmp6[2]
     };
-    _0x52a7ea.push(_0x33be58);
+    tmp5.push(tmp0);
   }
-  const _0x1ad54b = [];
-  while ((_0x270e41 = _0x5d3a9a.exec(_0x58d6d0)) !== null) {
-    _0x1ad54b.push(_0x270e41[1]);
+  const tmp7 = [];
+  while ((tmp6 = tmp4.exec(arg0)) !== null) {
+    tmp7.push(tmp6[1]);
   }
-  for (let _0x192aee = 0; _0x192aee < _0x52a7ea.length && _0x14cbc0.length < _0x295c49; _0x192aee++) {
+  for (let tmp0 = 0; tmp0 < tmp5.length && tmp2.length < arg1; tmp0++) {
     let {
-      url: _0x19e8a9,
-      rawTitle: _0xcbca49
-    } = _0x52a7ea[_0x192aee];
-    const _0x1fb14d = _0x19e8a9.match(/uddg=([^&]+)/);
-    if (_0x1fb14d) {
-      _0x19e8a9 = decodeURIComponent(_0x1fb14d[1]);
+      url: tmp02,
+      rawTitle: tmp1
+    } = tmp5[tmp0];
+    const tmp22 = tmp02.match(/uddg=([^&]+)/);
+    if (tmp22) {
+      tmp02 = decodeURIComponent(tmp22[1]);
     }
-    const _0xa17cba = stripHtml(_0xcbca49);
-    const _0x102ec4 = _0x192aee < _0x1ad54b.length ? stripHtml(_0x1ad54b[_0x192aee]) : "";
-    if (_0x19e8a9 && _0xa17cba && !_0x19e8a9.startsWith("/") && _0x19e8a9.startsWith("http")) {
-      let _0x2df0ec = "";
+    const tmp32 = stripHtml(tmp1);
+    const tmp42 = tmp0 < tmp7.length ? stripHtml(tmp7[tmp0]) : "";
+    if (tmp02 && tmp32 && !tmp02.startsWith("/") && tmp02.startsWith("http")) {
+      let tmp03 = "";
       try {
-        const _0x1de62a = new URL(_0x19e8a9);
-        _0x2df0ec = "https://www.google.com/s2/favicons?domain=" + _0x1de62a.hostname + "&sz=32";
+        const tmp04 = new URL(tmp02);
+        tmp03 = "https://www.google.com/s2/favicons?domain=" + tmp04.hostname + "&sz=32";
       } catch {}
-      const _0x4f5975 = {
-        title: _0xa17cba,
-        url: _0x19e8a9,
-        snippet: _0x102ec4,
-        faviconUrl: _0x2df0ec
+      const tmp12 = {
+        title: tmp32,
+        url: tmp02,
+        snippet: tmp42,
+        faviconUrl: tmp03
       };
-      _0x14cbc0.push(_0x4f5975);
+      tmp2.push(tmp12);
     }
   }
-  return _0x14cbc0;
+  return tmp2;
 }
-function stripHtml(_0x39072b) {
-  return _0x39072b.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/&#x27;/g, "'").replace(/&#39;/g, "'").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+function stripHtml(arg0) {
+  return arg0.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/&#x27;/g, "'").replace(/&#39;/g, "'").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
 }
-function resolveRedirectUrl(_0x3a830f, _0x483ca7 = 5) {
-  return new Promise((_0x1de237, _0x37a4db) => {
-    if (_0x483ca7 <= 0) {
-      return _0x1de237(_0x3a830f);
+function resolveRedirectUrl(arg0, tmp1 = 5) {
+  return new Promise((fn, arg1) => {
+    if (tmp1 <= 0) {
+      return fn(arg0);
     }
-    if (!isAllowedUrl(_0x3a830f)) {
-      return _0x1de237(_0x3a830f);
+    if (!isAllowedUrl(arg0)) {
+      return fn(arg0);
     }
-    const _0x2ad638 = new URL(_0x3a830f);
-    const _0x41d7bb = _0x2ad638.protocol === "https:" ? _0x372a8a : _0x5f0373;
-    const _0x4f6522 = _0x41d7bb.request({
-      hostname: _0x2ad638.hostname,
-      port: _0x2ad638.port || (_0x2ad638.protocol === "https:" ? 443 : 80),
-      path: _0x2ad638.pathname + _0x2ad638.search,
+    const tmp2 = new URL(arg0);
+    const tmp3 = tmp2.protocol === "https:" ? https : http;
+    const tmp4 = tmp3.request({
+      hostname: tmp2.hostname,
+      port: tmp2.port || (tmp2.protocol === "https:" ? 443 : 80),
+      path: tmp2.pathname + tmp2.search,
       method: "HEAD",
       headers: {
         "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
       }
-    }, _0x3da2ef => {
-      _0x3da2ef.resume();
-      if (_0x3da2ef.statusCode >= 300 && _0x3da2ef.statusCode < 400 && _0x3da2ef.headers.location) {
-        const _0x2c9997 = new URL(_0x3da2ef.headers.location, _0x3a830f).toString();
-        resolveRedirectUrl(_0x2c9997, _0x483ca7 - 1).then(_0x1de237, _0x37a4db);
+    }, arg02 => {
+      arg02.resume();
+      if (arg02.statusCode >= 300 && arg02.statusCode < 400 && arg02.headers.location) {
+        const tmp0 = new URL(arg02.headers.location, arg0).toString();
+        resolveRedirectUrl(tmp0, tmp1 - 1).then(fn, arg1);
       } else {
-        _0x1de237(_0x3a830f);
+        fn(arg0);
       }
     });
-    _0x4f6522.on("error", () => _0x1de237(_0x3a830f));
-    _0x4f6522.setTimeout(5000, () => {
-      _0x4f6522.destroy();
-      _0x1de237(_0x3a830f);
+    tmp4.on("error", () => fn(arg0));
+    tmp4.setTimeout(5000, () => {
+      tmp4.destroy();
+      fn(arg0);
     });
-    _0x4f6522.end();
+    tmp4.end();
   });
 }
-function isAllowedUrl(_0x45014a) {
+function isAllowedUrl(arg0) {
   try {
-    const _0x4fef57 = new URL(_0x45014a);
-    if (_0x4fef57.protocol !== "http:" && _0x4fef57.protocol !== "https:") {
+    const tmp0 = new URL(arg0);
+    if (tmp0.protocol !== "http:" && tmp0.protocol !== "https:") {
       return false;
     }
-    const _0x39f396 = _0x4fef57.hostname.toLowerCase();
-    if (_0x39f396 === "localhost" || _0x39f396 === "127.0.0.1" || _0x39f396 === "::1" || _0x39f396 === "0.0.0.0") {
+    const tmp1 = tmp0.hostname.toLowerCase();
+    if (tmp1 === "localhost" || tmp1 === "127.0.0.1" || tmp1 === "::1" || tmp1 === "0.0.0.0") {
       return false;
     }
-    if (/^0\./.test(_0x39f396)) {
+    if (/^0\./.test(tmp1)) {
       return false;
     }
-    if (/^10\./.test(_0x39f396)) {
+    if (/^10\./.test(tmp1)) {
       return false;
     }
-    if (/^172\.(1[6-9]|2\d|3[01])\./.test(_0x39f396)) {
+    if (/^172\.(1[6-9]|2\d|3[01])\./.test(tmp1)) {
       return false;
     }
-    if (/^192\.168\./.test(_0x39f396)) {
+    if (/^192\.168\./.test(tmp1)) {
       return false;
     }
-    if (/^169\.254\./.test(_0x39f396)) {
+    if (/^169\.254\./.test(tmp1)) {
       return false;
     }
-    if (/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(_0x39f396)) {
+    if (/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(tmp1)) {
       return false;
     }
-    if (/^fc00:/i.test(_0x39f396) || /^fe80:/i.test(_0x39f396) || /^fd/i.test(_0x39f396)) {
+    if (/^fc00:/i.test(tmp1) || /^fe80:/i.test(tmp1) || /^fd/i.test(tmp1)) {
       return false;
     }
-    if (_0x39f396 === "[::1]" || _0x39f396 === "[::]") {
+    if (tmp1 === "[::1]" || tmp1 === "[::]") {
       return false;
     }
-    if (_0x39f396.endsWith(".local") || _0x39f396.endsWith(".internal") || _0x39f396.endsWith(".localhost")) {
+    if (tmp1.endsWith(".local") || tmp1.endsWith(".internal") || tmp1.endsWith(".localhost")) {
       return false;
     }
-    if (_0x39f396 === "metadata.google.internal" || _0x39f396 === "169.254.169.254") {
+    if (tmp1 === "metadata.google.internal" || tmp1 === "169.254.169.254") {
       return false;
     }
-    if (_0x4fef57.port && ["22", "23", "25", "3306", "5432", "6379", "27017"].includes(_0x4fef57.port)) {
+    if (tmp0.port && ["22", "23", "25", "3306", "5432", "6379", "27017"].includes(tmp0.port)) {
       return false;
     }
     return true;
@@ -168,132 +168,132 @@ function isAllowedUrl(_0x45014a) {
     return false;
   }
 }
-function fetchUrlContent(_0x12446b, _0x17051e = 50000) {
-  return new Promise((_0x20d8e5, _0x50f6c5) => {
-    if (!isAllowedUrl(_0x12446b)) {
-      return _0x50f6c5(new Error("Blocked URL (private/internal): " + _0x12446b));
+function fetchUrlContent(arg0, tmp1 = 50000) {
+  return new Promise((fn, fn2) => {
+    if (!isAllowedUrl(arg0)) {
+      return fn2(new Error("Blocked URL (private/internal): " + arg0));
     }
-    const _0x1fd050 = new URL(_0x12446b);
-    const _0x563f05 = _0x1fd050.protocol === "https:" ? _0x372a8a : _0x5f0373;
-    const _0x28a6c3 = _0x563f05.request({
-      hostname: _0x1fd050.hostname,
-      port: _0x1fd050.port || (_0x1fd050.protocol === "https:" ? 443 : 80),
-      path: _0x1fd050.pathname + _0x1fd050.search,
+    const tmp2 = new URL(arg0);
+    const tmp3 = tmp2.protocol === "https:" ? https : http;
+    const tmp4 = tmp3.request({
+      hostname: tmp2.hostname,
+      port: tmp2.port || (tmp2.protocol === "https:" ? 443 : 80),
+      path: tmp2.pathname + tmp2.search,
       method: "GET",
       headers: {
         "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
         accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
       }
-    }, _0xc41b6c => {
-      if (_0xc41b6c.statusCode >= 300 && _0xc41b6c.statusCode < 400 && _0xc41b6c.headers.location) {
-        const _0x165cdb = new URL(_0xc41b6c.headers.location, _0x12446b).toString();
-        _0xc41b6c.resume();
-        if (!isAllowedUrl(_0x165cdb)) {
-          return _0x50f6c5(new Error("Redirect to private/internal URL blocked: " + _0x165cdb));
+    }, arg02 => {
+      if (arg02.statusCode >= 300 && arg02.statusCode < 400 && arg02.headers.location) {
+        const tmp0 = new URL(arg02.headers.location, arg0).toString();
+        arg02.resume();
+        if (!isAllowedUrl(tmp0)) {
+          return fn2(new Error("Redirect to private/internal URL blocked: " + tmp0));
         }
-        return fetchUrlContent(_0x165cdb, _0x17051e).then(_0x20d8e5, _0x50f6c5);
+        return fetchUrlContent(tmp0, tmp1).then(fn, fn2);
       }
-      let _0x386c73 = "";
-      let _0x4a769e = 0;
-      _0xc41b6c.setEncoding("utf8");
-      _0xc41b6c.on("data", _0x52b247 => {
-        _0x4a769e += Buffer.byteLength(_0x52b247);
-        if (_0x4a769e <= _0x17051e) {
-          _0x386c73 += _0x52b247;
+      let tmp12 = "";
+      let tmp22 = 0;
+      arg02.setEncoding("utf8");
+      arg02.on("data", arg03 => {
+        tmp22 += Buffer.byteLength(arg03);
+        if (tmp22 <= tmp1) {
+          tmp12 += arg03;
         }
       });
-      _0xc41b6c.on("end", () => {
-        const _0x4d1bb0 = _0x386c73.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "").replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/&#x27;/g, "'").replace(/\s+/g, " ").trim().slice(0, 30000);
-        _0x20d8e5(_0x4d1bb0);
+      arg02.on("end", () => {
+        const tmp0 = tmp12.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "").replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/&#x27;/g, "'").replace(/\s+/g, " ").trim().slice(0, 30000);
+        fn(tmp0);
       });
     });
-    _0x28a6c3.on("error", _0x50f6c5);
-    _0x28a6c3.setTimeout(15000, () => {
-      _0x28a6c3.destroy();
-      _0x50f6c5(new Error("Fetch timeout"));
+    tmp4.on("error", fn2);
+    tmp4.setTimeout(15000, () => {
+      tmp4.destroy();
+      fn2(new Error("Fetch timeout"));
     });
-    _0x28a6c3.end();
+    tmp4.end();
   });
 }
-function buildKnowledgeBaseItem(_0x38d8d6) {
-  const _0x3303e8 = [writeStringField(1, _0x38d8d6.identifier || _0x9f70ff.randomUUID()), writeStringField(2, _0x38d8d6.content || _0x38d8d6.snippet || ""), writeStringField(3, _0x38d8d6.url), writeStringField(4, _0x38d8d6.title), writeStringField(7, _0x38d8d6.snippet || "")];
-  return Buffer.concat(_0x3303e8);
+function buildKnowledgeBaseItem(arg0) {
+  const tmp1 = [writeStringField(1, arg0.identifier || crypto.randomUUID()), writeStringField(2, arg0.content || arg0.snippet || ""), writeStringField(3, arg0.url), writeStringField(4, arg0.title), writeStringField(7, arg0.snippet || "")];
+  return Buffer.concat(tmp1);
 }
-function buildSearchResponse(_0x54b333, _0x3f83ad) {
-  const _0x441b54 = _0x54b333.map(_0x19bda1 => writeMessageField(1, buildKnowledgeBaseItem(_0x19bda1)));
-  _0x441b54.push(writeStringField(2, "https://duckduckgo.com/?q=" + encodeURIComponent(_0x3f83ad)));
-  return Buffer.concat(_0x441b54);
+function buildSearchResponse(arg0, arg1) {
+  const tmp2 = arg0.map(arg02 => writeMessageField(1, buildKnowledgeBaseItem(arg02)));
+  tmp2.push(writeStringField(2, "https://duckduckgo.com/?q=" + encodeURIComponent(arg1)));
+  return Buffer.concat(tmp2);
 }
-function buildRedirectResponse(_0x4ba5b7) {
-  return writeStringField(1, _0x4ba5b7);
+function buildRedirectResponse(arg0) {
+  return writeStringField(1, arg0);
 }
-function sendProtoResponse(_0x290c90, _0x56f1fa, _0x418da1) {
-  const _0x30f699 = wrapUnary(_0x418da1);
-  _0x56f1fa.writeHead(200, {
+function sendProtoResponse(arg0, arg1, arg2) {
+  const tmp3 = wrapUnary(arg2);
+  arg1.writeHead(200, {
     ...unaryHeaders(),
-    "content-length": _0x30f699.length
+    "content-length": tmp3.length
   });
-  _0x56f1fa.end(_0x30f699);
+  arg1.end(tmp3);
 }
-export function handleGetWebSearchResults(_0x2d96a9, _0xcab5a9, _0x2e9c95) {
-  const _0x4a1b37 = _0x2d96a9.headers;
-  console.log("  🔍 WebSearch headers: accept-enc=\"" + (_0x4a1b37["accept-encoding"] || "") + "\" connect-accept-enc=\"" + (_0x4a1b37["connect-accept-encoding"] || "") + "\" content-enc=\"" + (_0x4a1b37["content-encoding"] || "") + "\"");
-  let _0x540fa2 = "";
-  if (_0x2e9c95 && _0x2e9c95.length > 0) {
+export function handleGetWebSearchResults(arg0, arg1, arg2) {
+  const tmp3 = arg0.headers;
+  console.log("  🔍 WebSearch headers: accept-enc=\"" + (tmp3["accept-encoding"] || "") + "\" connect-accept-enc=\"" + (tmp3["connect-accept-encoding"] || "") + "\" content-enc=\"" + (tmp3["content-encoding"] || "") + "\"");
+  let tmp4 = "";
+  if (arg2 && arg2.length > 0) {
     try {
-      const _0x1c2d09 = unwrapRequest(_0x2e9c95, _0x4a1b37);
-      const _0x531593 = parseFields(_0x1c2d09);
-      const _0x54239e = getField(_0x531593, 2, 2);
-      if (_0x54239e) {
-        _0x540fa2 = _0x54239e.value.toString("utf8");
+      const tmp0 = unwrapRequest(arg2, tmp3);
+      const tmp1 = parseFields(tmp0);
+      const tmp2 = getField(tmp1, 2, 2);
+      if (tmp2) {
+        tmp4 = tmp2.value.toString("utf8");
       }
-    } catch (_0x5d00b6) {
-      console.log("  🔍 WebSearch parse error: " + _0x5d00b6.message);
+    } catch (tmp0) {
+      console.log("  🔍 WebSearch parse error: " + tmp0.message);
     }
   }
-  if (!_0x540fa2) {
+  if (!tmp4) {
     console.log("  🔍 WebSearch: empty query");
-    return sendProtoResponse(_0x2d96a9, _0xcab5a9, Buffer.alloc(0));
+    return sendProtoResponse(arg0, arg1, Buffer.alloc(0));
   }
-  console.log("  🔍 WebSearch: \"" + _0x540fa2 + "\"");
-  searchDuckDuckGo(_0x540fa2).then(async _0x3ec8c1 => {
-    console.log("  🔍 WebSearch: " + _0x3ec8c1.length + " results for \"" + _0x540fa2 + "\"");
-    const _0x5dcde5 = _0x3ec8c1.slice(0, 5).map(_0x558ed2 => fetchUrlContent(_0x558ed2.url).then(_0x1a7df5 => {
-      _0x558ed2.content = _0x1a7df5;
+  console.log("  🔍 WebSearch: \"" + tmp4 + "\"");
+  searchDuckDuckGo(tmp4).then(async arg02 => {
+    console.log("  🔍 WebSearch: " + arg02.length + " results for \"" + tmp4 + "\"");
+    const tmp1 = arg02.slice(0, 5).map(arg03 => fetchUrlContent(arg03.url).then(arg04 => {
+      arg03.content = arg04;
     }).catch(() => {}));
-    await Promise.allSettled(_0x5dcde5);
-    const _0x3d1067 = buildSearchResponse(_0x3ec8c1, _0x540fa2);
-    console.log("  🔍 WebSearch response: " + _0x3d1067.length + "b, " + _0x3ec8c1.length + " results");
-    sendProtoResponse(_0x2d96a9, _0xcab5a9, _0x3d1067);
-  }).catch(_0x5df9f5 => {
-    console.error("  ❌ WebSearch error: " + _0x5df9f5.message);
-    sendProtoResponse(_0x2d96a9, _0xcab5a9, Buffer.alloc(0));
+    await Promise.allSettled(tmp1);
+    const tmp2 = buildSearchResponse(arg02, tmp4);
+    console.log("  🔍 WebSearch response: " + tmp2.length + "b, " + arg02.length + " results");
+    sendProtoResponse(arg0, arg1, tmp2);
+  }).catch(arg02 => {
+    console.error("  ❌ WebSearch error: " + arg02.message);
+    sendProtoResponse(arg0, arg1, Buffer.alloc(0));
   });
 }
-export function handleGetWebSearchRedirect(_0x31a09c, _0x162e03, _0x47fb51) {
-  let _0x3294fb = "";
-  if (_0x47fb51 && _0x47fb51.length > 0) {
+export function handleGetWebSearchRedirect(arg0, arg1, arg2) {
+  let tmp3 = "";
+  if (arg2 && arg2.length > 0) {
     try {
-      const _0x5bc2d0 = unwrapRequest(_0x47fb51, _0x31a09c.headers);
-      const _0x2ab7a0 = parseFields(_0x5bc2d0);
-      const _0x52cdde = getField(_0x2ab7a0, 1, 2);
-      if (_0x52cdde) {
-        _0x3294fb = _0x52cdde.value.toString("utf8");
+      const tmp0 = unwrapRequest(arg2, arg0.headers);
+      const tmp1 = parseFields(tmp0);
+      const tmp2 = getField(tmp1, 1, 2);
+      if (tmp2) {
+        tmp3 = tmp2.value.toString("utf8");
       }
-    } catch (_0x12d9fb) {
-      console.log("  🔍 WebRedirect parse error: " + _0x12d9fb.message);
+    } catch (tmp0) {
+      console.log("  🔍 WebRedirect parse error: " + tmp0.message);
     }
   }
-  if (!_0x3294fb) {
+  if (!tmp3) {
     console.log("  🔍 WebRedirect: empty URL");
-    return sendProtoResponse(_0x31a09c, _0x162e03, Buffer.alloc(0));
+    return sendProtoResponse(arg0, arg1, Buffer.alloc(0));
   }
-  console.log("  🔍 WebRedirect: " + _0x3294fb);
-  resolveRedirectUrl(_0x3294fb).then(_0x4f627c => {
-    console.log("  🔍 WebRedirect: " + _0x3294fb + " → " + _0x4f627c);
-    sendProtoResponse(_0x31a09c, _0x162e03, buildRedirectResponse(_0x4f627c));
-  }).catch(_0x655610 => {
-    console.error("  ❌ WebRedirect error: " + _0x655610.message);
-    sendProtoResponse(_0x31a09c, _0x162e03, buildRedirectResponse(_0x3294fb));
+  console.log("  🔍 WebRedirect: " + tmp3);
+  resolveRedirectUrl(tmp3).then(arg02 => {
+    console.log("  🔍 WebRedirect: " + tmp3 + " → " + arg02);
+    sendProtoResponse(arg0, arg1, buildRedirectResponse(arg02));
+  }).catch(arg02 => {
+    console.error("  ❌ WebRedirect error: " + arg02.message);
+    sendProtoResponse(arg0, arg1, buildRedirectResponse(tmp3));
   });
 }
