@@ -11,7 +11,7 @@ Devin Desktop BYOK 桥接插件 — 使用自己的 API Key 连接 Claude / GPT 
 - 插件 ID：`devin-byok-bridge`
 - 显示名：Devin BYOK Bridge
 - 维护者 / Publisher：`ycx932436`
-- 版本：2.0.4
+- 版本：2.1.0
 - 仓库：https://github.com/ycx932436/devin-byok-bridge
 
 ## 安装
