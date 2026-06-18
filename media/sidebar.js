@@ -1,7 +1,9 @@
-(() => {
+﻿(() => {
   const tmp0 = acquireVsCodeApi();
   let tmp1 = "";
   const tmp2 = new Map();
+  const comboData = new Map();
+  let comboActiveIdx = -1;
   let tmp3 = tmp0.getState() || {};
   const fn = () => ({
     1: {
@@ -329,6 +331,79 @@
     }
     fn20();
   }
+  function comboOpen(inputEl) {
+    const dd = inputEl.parentElement && inputEl.parentElement.querySelector(".combo-dropdown");
+    if (!dd) return;
+    const items = dd.querySelectorAll(".combo-item");
+    if (!items.length) return;
+    dd.classList.add("open");
+    comboFilter(inputEl);
+  }
+  function comboClose(inputEl) {
+    const dd = inputEl.parentElement && inputEl.parentElement.querySelector(".combo-dropdown");
+    if (!dd) return;
+    dd.classList.remove("open");
+    comboActiveIdx = -1;
+    const items = dd.querySelectorAll(".combo-item");
+    items.forEach(it => it.classList.remove("active"));
+  }
+  function comboToggle(inputEl) {
+    const dd = inputEl.parentElement && inputEl.parentElement.querySelector(".combo-dropdown");
+    if (!dd) return;
+    if (dd.classList.contains("open")) {
+      comboClose(inputEl);
+    } else {
+      comboOpen(inputEl);
+    }
+  }
+  function comboFilter(inputEl) {
+    const dd = inputEl.parentElement && inputEl.parentElement.querySelector(".combo-dropdown");
+    if (!dd) return;
+    const query = inputEl.value.trim().toLowerCase();
+    const items = dd.querySelectorAll(".combo-item");
+    let visibleCount = 0;
+    items.forEach(it => {
+      const val = (it.getAttribute("data-value") || "").toLowerCase();
+      const txt = (it.textContent || "").toLowerCase();
+      const match = !query || val.includes(query) || txt.includes(query);
+      it.style.display = match ? "" : "none";
+      if (match) visibleCount++;
+    });
+    if (visibleCount === 0 && !dd.querySelector(".combo-hint")) {
+      const hint = document.createElement("div");
+      hint.className = "combo-hint";
+      hint.textContent = "无匹配模型";
+      dd.appendChild(hint);
+    } else if (visibleCount > 0) {
+      const hint = dd.querySelector(".combo-hint");
+      if (hint) hint.remove();
+    }
+    if (dd.classList.contains("open") || query) {
+      dd.classList.add("open");
+    }
+    comboActiveIdx = -1;
+  }
+  function comboSelect(inputEl, item) {
+    const val = item.getAttribute("data-value") || item.textContent;
+    inputEl.value = val;
+    comboClose(inputEl);
+    inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+    inputEl.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  function comboNavigate(inputEl, direction) {
+    const dd = inputEl.parentElement && inputEl.parentElement.querySelector(".combo-dropdown");
+    if (!dd || !dd.classList.contains("open")) return;
+    const items = Array.from(dd.querySelectorAll(".combo-item")).filter(it => it.style.display !== "none");
+    if (!items.length) return;
+    items.forEach(it => it.classList.remove("active"));
+    if (direction === "down") {
+      comboActiveIdx = comboActiveIdx < items.length - 1 ? comboActiveIdx + 1 : 0;
+    } else {
+      comboActiveIdx = comboActiveIdx > 0 ? comboActiveIdx - 1 : items.length - 1;
+    }
+    items[comboActiveIdx].classList.add("active");
+    items[comboActiveIdx].scrollIntoView({ block: "nearest" });
+  }
   function fn24a() {
     const tmp12 = fn4("cfgAnthropicPath");
     const tmp22 = fn4("cfgOpenaiPath");
@@ -379,6 +454,31 @@
       id: tmp32,
       name: tmp32
     }].concat(tmp4) : tmp4;
+    if (arg0.tagName === "INPUT" && arg0.parentElement && arg0.parentElement.querySelector(".combo-dropdown")) {
+      const dd = arg0.parentElement.querySelector(".combo-dropdown");
+      dd.innerHTML = "";
+      if (!tmp6.length) {
+        const hint = document.createElement("div");
+        hint.className = "combo-hint";
+        hint.textContent = tmp32 ? tmp32 : "请先加载模型列表或输入模型ID";
+        dd.appendChild(hint);
+      } else {
+        for (const tmp02 of tmp6) {
+          const val = fn21(tmp02);
+          const label = fn22(tmp02) || val;
+          const item = document.createElement("div");
+          item.className = "combo-item" + (val === tmp32 ? " selected" : "");
+          item.setAttribute("data-value", val);
+          item.textContent = label;
+          dd.appendChild(item);
+        }
+      }
+      if (tmp32 && arg0.value !== tmp32) {
+        arg0.value = tmp32;
+      }
+      comboData.set(arg0.id, tmp6.map(tmp02 => ({ value: fn21(tmp02), label: fn22(tmp02) || fn21(tmp02) })));
+      return;
+    }
     const tmp7 = Array.from(arg0.options).map(arg02 => arg02.value + "\0" + (arg02.textContent || "")).join("");
     const tmp8 = tmp6.length ? tmp6.map(arg02 => fn21(arg02) + "\0" + (fn22(arg02) || fn21(arg02))).join("") : (tmp32 || "") + "\0" + (tmp32 ? tmp32 : "请先加载模型列表");
     if (tmp7 === tmp8) {
@@ -391,7 +491,7 @@
     if (!tmp6.length) {
       const tmp02 = document.createElement("option");
       tmp02.value = tmp32 || "";
-      tmp02.textContent = tmp32 ? tmp32 : "请先加载模型列表";
+      tmp02.textContent = tmp32 ? tmp32 : "请先加载模型列表或输入模型ID";
       tmp02.selected = true;
       arg0.appendChild(tmp02);
       return;
@@ -812,9 +912,91 @@
     const tmp12 = arg0.target;
     if (tmp12 && (tmp12.id === "cfgDefaultModelCustom" || /cfgByok[12]Model/.test(tmp12.id))) {
       fn20();
+      if (/cfgByok[12]Model/.test(tmp12.id)) {
+        comboFilter(tmp12);
+      }
     }
     if (fn20a(tmp12)) {
       fn20b(false);
+    }
+  });
+  document.addEventListener("blur", arg0 => {
+    const tmp12 = arg0.target;
+    if (tmp12 && (tmp12.id === "cfgByok1Model" || tmp12.id === "cfgByok2Model")) {
+      setTimeout(() => comboClose(tmp12), 150);
+      const tmp22 = tmp12.value.trim();
+      if (tmp22) {
+        const tmp32 = tmp12.id === "cfgByok2Model" ? 2 : 1;
+        tmp3["lastSelectedModel" + tmp32] = tmp22;
+        fn3(tmp32);
+        fn20();
+        fn20b(true);
+      }
+    }
+  }, true);
+  document.addEventListener("keydown", arg0 => {
+    const tmp12 = arg0.target;
+    if (tmp12 && (tmp12.id === "cfgByok1Model" || tmp12.id === "cfgByok2Model")) {
+      const dd = tmp12.parentElement && tmp12.parentElement.querySelector(".combo-dropdown");
+      const isOpen = dd && dd.classList.contains("open");
+      if (arg0.key === "ArrowDown" && isOpen) {
+        arg0.preventDefault();
+        comboNavigate(tmp12, "down");
+        return;
+      }
+      if (arg0.key === "ArrowUp" && isOpen) {
+        arg0.preventDefault();
+        comboNavigate(tmp12, "up");
+        return;
+      }
+      if (arg0.key === "Escape" && isOpen) {
+        arg0.preventDefault();
+        comboClose(tmp12);
+        return;
+      }
+      if (arg0.key === "Enter") {
+        if (isOpen && comboActiveIdx >= 0) {
+          const items = Array.from(dd.querySelectorAll(".combo-item")).filter(it => it.style.display !== "none");
+          if (items[comboActiveIdx]) {
+            arg0.preventDefault();
+            comboSelect(tmp12, items[comboActiveIdx]);
+            return;
+          }
+        }
+        arg0.preventDefault();
+        const tmp22 = tmp12.value.trim();
+        if (tmp22) {
+          const tmp32 = tmp12.id === "cfgByok2Model" ? 2 : 1;
+          tmp3["lastSelectedModel" + tmp32] = tmp22;
+          fn3(tmp32);
+          fn20();
+          fn20b(true);
+        }
+      }
+    }
+  });
+  document.addEventListener("focus", arg0 => {
+    const tmp12 = arg0.target;
+    if (tmp12 && /cfgByok[12]Model/.test(tmp12.id)) {
+      comboOpen(tmp12);
+    }
+  }, true);
+  document.addEventListener("click", arg0 => {
+    const item = arg0.target.closest && arg0.target.closest(".combo-item");
+    if (item) {
+      const wrap = item.closest && item.closest(".combo-wrap");
+      const input = wrap && wrap.querySelector("input");
+      if (input) {
+        comboSelect(input, item);
+        arg0.preventDefault();
+        return;
+      }
+    }
+    if (arg0.target.closest && !arg0.target.closest(".combo-wrap")) {
+      ["cfgByok1Model", "cfgByok2Model"].forEach(id => {
+        const el = fn4(id);
+        if (el) comboClose(el);
+      });
     }
   });
   window.addEventListener("message", arg0 => {
@@ -887,6 +1069,10 @@
     const tmp12 = fn();
     const tmp22 = fn11(arg0);
     const tmp32 = fn4("cfgByok" + arg0 + "Model");
+    // 优先恢复手动输入的模型ID
+    if (tmp32 && tmp12[arg0].selected) {
+      tmp32.value = tmp12[arg0].selected;
+    }
     if (tmp12[arg0].options.length && tmp12[arg0].apiKey && tmp12[arg0].apiKey === tmp22) {
       if (tmp32) {
         fn25(tmp32, tmp12[arg0].options, tmp12[arg0].selected || tmp32.value || "");

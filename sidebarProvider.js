@@ -2873,6 +2873,88 @@ input:focus, select:focus {
   padding-left: 7px;
   color: ${tmp16};
 }
+
+/* ── Combo dropdown ── */
+.model-combo {
+  display: flex;
+  align-items: center;
+}
+.combo-wrap {
+  position: relative;
+}
+.combo-wrap input {
+  padding-right: 24px !important;
+}
+.combo-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  max-height: 200px;
+  overflow-y: auto;
+  background: ${tmp19};
+  border: 1px solid ${tmp21};
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  margin-top: -1px;
+}
+.combo-dropdown.open {
+  display: block;
+}
+.combo-dropdown:empty {
+  display: none !important;
+}
+.combo-item {
+  padding: 5px 10px;
+  font-size: 11px;
+  color: ${tmp23};
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.1s;
+}
+.combo-item:hover,
+.combo-item.active {
+  background: rgba(13, 148, 136, 0.15);
+  color: ${tmp15};
+}
+.combo-item.selected {
+  font-weight: 700;
+}
+.combo-hint {
+  padding: 5px 10px;
+  font-size: 10px;
+  color: ${tmp16};
+  font-style: italic;
+}
+.combo-wrap input:focus + .combo-dropdown,
+.combo-wrap input:focus ~ .combo-dropdown {
+  border-color: var(--vscode-focusBorder, ${tmp13});
+}
+
+/* ── Select beautify ── */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23a1a1aa'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 10px 6px;
+  padding-right: 24px;
+  cursor: pointer;
+}
+select:focus {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='${encodeURIComponent(tmp13)}'/%3E%3C/svg%3E");
+}
+select option {
+  background: ${tmp19};
+  color: ${tmp23};
+  padding: 4px 8px;
+}
 </style>
 </head>
 <body>
@@ -2939,8 +3021,11 @@ input:focus, select:focus {
                 <button type="button" class="btn btn-s sm" data-ws-action="importExternalConfig" data-ws-source="claude" data-ws-slot="1">导入 Claude 配置</button>
                 <button type="button" class="btn btn-s sm" data-ws-action="importExternalConfig" data-ws-source="codex" data-ws-slot="1">导入 GPT 配置</button>
             </div>
-            <div class="row" style="gap:6px;margin-bottom:6px">
-                <select id="cfgByok1Model" style="flex:1;font-size:12px;padding:5px 8px">${tmp27 ? `<option value="${tmp27}" selected>${tmp27}</option>` : "<option value=\"\" disabled selected>请先加载模型</option>"}</select>
+            <div class="model-combo" style="gap:6px;margin-bottom:6px">
+                <div class="combo-wrap" style="flex:1">
+                    <input type="text" id="cfgByok1Model" style="font-size:12px;padding:5px 8px;width:100%" value="${tmp27 || ''}" placeholder="输入模型ID或从列表选择" autocomplete="off">
+                    <div class="combo-dropdown" id="cfgByok1ModelDropdown"></div>
+                </div>
                 <button type="button" class="btn btn-s sm" data-ws-action="fetchModels" data-ws-slot="1" style="padding:4px 8px">加载模型</button>
             </div>
             <div class="fg" id="cfgByok1ThinkingEffortRow"><label id="cfgByok1ThinkingLabel">${esc(thinkingEffort_1.getThinkingIntensityHint(thinkingEffort_1.detectModelProvider(tmp27)))}</label><select id="cfgByok1ThinkingEffort">${buildThinkingEffortOptions(tmp27, tmp31)}</select></div>
@@ -2954,8 +3039,11 @@ input:focus, select:focus {
                 <button type="button" class="btn btn-s sm" data-ws-action="importExternalConfig" data-ws-source="claude" data-ws-slot="2">导入 Claude 配置</button>
                 <button type="button" class="btn btn-s sm" data-ws-action="importExternalConfig" data-ws-source="codex" data-ws-slot="2">导入 GPT 配置</button>
             </div>
-            <div class="row" style="gap:6px;margin-bottom:6px">
-                <select id="cfgByok2Model" style="flex:1;font-size:12px;padding:5px 8px">${tmp30 ? `<option value="${tmp30}" selected>${tmp30}</option>` : "<option value=\"\" disabled selected>请先加载模型</option>"}</select>
+            <div class="model-combo" style="gap:6px;margin-bottom:6px">
+                <div class="combo-wrap" style="flex:1">
+                    <input type="text" id="cfgByok2Model" style="font-size:12px;padding:5px 8px;width:100%" value="${tmp30 || ''}" placeholder="输入模型ID或从列表选择" autocomplete="off">
+                    <div class="combo-dropdown" id="cfgByok2ModelDropdown"></div>
+                </div>
                 <button type="button" class="btn btn-s sm" data-ws-action="fetchModels" data-ws-slot="2" style="padding:4px 8px">加载模型</button>
             </div>
             <div class="fg" id="cfgByok2ThinkingEffortRow"><label id="cfgByok2ThinkingLabel">${esc(thinkingEffort_1.getThinkingIntensityHint(thinkingEffort_1.detectModelProvider(tmp30)))}</label><select id="cfgByok2ThinkingEffort">${buildThinkingEffortOptions(tmp30, tmp32)}</select></div>
