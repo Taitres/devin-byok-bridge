@@ -2,6 +2,7 @@ import { buildTextDelta, buildThinkingDelta, buildToolCallDelta, buildSignatureD
 import { MAX_TOOL_MARKER_LOOKBEHIND, findToolCallStartIndex, parseTextToolCalls } from "./tool-call-parser.js";
 import { normalizeToolInvocation } from "./tool-normalization.js";
 import { emitAIText, emitToolCall, emitChatEnd } from "../ws-bridge.js";
+import { mergeUsage, extractAnthropicUsage } from "./usage-log.js";
 export function parseSSEChunk(arg0) {
   const tmp1 = [];
   const tmp2 = arg0.split("\n");
@@ -52,6 +53,10 @@ export class AnthropicStreamProcessor {
     this._capturingToolText = false;
     this._capturedToolText = "";
     this._emittedToolCall = false;
+    this._usage = null;
+  }
+  getUsage() {
+    return this._usage;
   }
   processEvent(tmp0) {
     const {
@@ -60,6 +65,9 @@ export class AnthropicStreamProcessor {
     } = tmp0;
     const tmp3 = [];
     switch (tmp1) {
+      case "message_start":
+        this._usage = mergeUsage(this._usage, extractAnthropicUsage(tmp0));
+        break;
       case "content_block_start":
         this._onContentBlockStart(tmp2, tmp3);
         break;
@@ -72,6 +80,13 @@ export class AnthropicStreamProcessor {
       case "message_delta":
         if (tmp2?.delta?.stop_reason) {
           this._stopReason = tmp2.delta.stop_reason;
+        }
+        if (tmp2?.usage) {
+          this._usage = mergeUsage(this._usage, extractAnthropicUsage({
+            data: {
+              usage: tmp2.usage
+            }
+          }));
         }
         break;
       case "message_stop":

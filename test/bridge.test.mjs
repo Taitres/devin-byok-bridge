@@ -8,10 +8,16 @@ import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
-import { sanitizeAnthropicMessages } from "../proxy-scripts/src/handlers/parse-request.js";
-import { shouldFallbackToChatCompletions, toChatCompletionsMessages, buildOpenAIChatCompletionsBody, requiresConfiguredDefaultModel } from "../proxy-scripts/src/handlers/chat.js";
+import { sanitizeAnthropicMessages, parseGetChatMessageRequest } from "../proxy-scripts/src/handlers/parse-request.js";
+import { applySystemPromptOverride, clearSystemPromptCache } from "../proxy-scripts/src/handlers/system-prompt.js";
+import { shouldFallbackToChatCompletions, toChatCompletionsMessages, buildOpenAIChatCompletionsBody, requiresConfiguredDefaultModel, toInjectedTailMessage } from "../proxy-scripts/src/handlers/chat.js";
 import { setRuntimeConfig, handleConfigRequest } from "../proxy-scripts/src/handlers/models.js";
-import { buildAnthropicThinkingPayload, supportsAdaptiveClaudeThinking } from "../proxy-scripts/src/handlers/byok-slots.js";
+import { applyAnthropicPromptCache, normalizeOpenAIPromptCacheMode, prepareToolsForPromptCache, shouldRetryWithoutPromptCache, sortToolsForStablePrefix } from "../proxy-scripts/src/handlers/prompt-cache.js";
+import { computeCacheHitRate, extractOpenAIResponsesUsage, formatUsageLog, mergeUsage } from "../proxy-scripts/src/handlers/usage-log.js";
+import { parseOpenAISSEChunk, OpenAIStreamProcessor } from "../proxy-scripts/src/handlers/openai-stream.js";
+import { buildAnthropicThinkingPayload, supportsAdaptiveClaudeThinking, getByokSlot, shouldInterceptByokChat, peekRequestedModel } from "../proxy-scripts/src/handlers/byok-slots.js";
+import { wrapEnvelope } from "../proxy-scripts/src/connect.js";
+import { writeStringField } from "../proxy-scripts/src/proto.js";
 import { buildGatewayCapabilityKey, clearGatewayCapabilityCache, getGatewayCapability, markGatewayCapability, _getGatewayCapabilityCacheSizeForTests } from "../proxy-scripts/src/handlers/gateway-capability.js";
 
 const require = createRequire(import.meta.url);
@@ -124,6 +130,83 @@ test("sanitizeAnthropicMessages normalizes Bedrock-incompatible tool ids", () =>
   assert.equal(result[1].content[0].tool_use_id, toolUseId);
 });
 
+test("toInjectedTailMessage marks runtime injections as volatile tail", () => {
+  assert.deepEqual(toInjectedTailMessage({
+    role: "user",
+    content: "hello"
+  }), {
+    role: "user",
+    content: "hello",
+    _volatileTail: true
+  });
+});
+
+test("normalizeOpenAIPromptCacheMode normalizes invalid values to observe", () => {
+  assert.equal(normalizeOpenAIPromptCacheMode("AUTO"), "auto");
+  assert.equal(normalizeOpenAIPromptCacheMode("off"), "off");
+  assert.equal(normalizeOpenAIPromptCacheMode("unexpected"), "observe");
+  assert.equal(normalizeOpenAIPromptCacheMode(""), "observe");
+});
+
+test("prepareToolsForPromptCache keeps OpenAI tools unchanged when mode is off", () => {
+  const tools = [{
+    name: "zebra"
+  }, {
+    name: "alpha"
+  }];
+  const prepared = prepareToolsForPromptCache(tools, "openai", {
+    config: {
+      enabled: true,
+      openaiMode: "off",
+      sortTools: true
+    }
+  });
+  assert.equal(prepared, tools);
+  assert.deepEqual(prepared.map(tool => tool.name), ["zebra", "alpha"]);
+});
+
+test("prepareToolsForPromptCache respects global disable switch for Anthropic too", () => {
+  const tools = [{
+    name: "zebra"
+  }, {
+    name: "alpha"
+  }];
+  const prepared = prepareToolsForPromptCache(tools, "anthropic", {
+    config: {
+      enabled: false,
+      openaiMode: "observe",
+      sortTools: true
+    }
+  });
+  assert.equal(prepared, tools);
+  assert.deepEqual(prepared.map(tool => tool.name), ["zebra", "alpha"]);
+});
+
+test("prepareToolsForPromptCache canonicalizes OpenAI tool order and nested schema keys", () => {
+  const prepared = prepareToolsForPromptCache([{
+    name: "same",
+    input_schema: {
+      z: 1,
+      a: 2
+    }
+  }, {
+    name: "alpha",
+    input_schema: {
+      b: 1,
+      a: 1
+    }
+  }], "openai", {
+    config: {
+      enabled: true,
+      openaiMode: "observe",
+      sortTools: true
+    }
+  });
+  assert.deepEqual(prepared.map(tool => tool.name), ["alpha", "same"]);
+  assert.equal(JSON.stringify(prepared[0]), "{\"input_schema\":{\"a\":1,\"b\":1},\"name\":\"alpha\"}");
+  assert.equal(JSON.stringify(prepared[1]), "{\"input_schema\":{\"a\":2,\"z\":1},\"name\":\"same\"}");
+});
+
 test("requiresConfiguredDefaultModel allows __DEFAULT__ models when default model is configured", () => {
   setRuntimeConfig({
     defaultModel: "gpt-5.5",
@@ -185,6 +268,46 @@ test("handleConfigRequest applies POST body when hybrid passes buffered body", a
   const parsed = JSON.parse(body);
   assert.equal(parsed.defaultModel, "claude-sonnet-4-6");
   assert.equal(parsed.byok2.model, "claude-opus-4-8-thinking");
+});
+
+test("system prompt override hot reload reads updated prompt file", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "devin-prompt-"));
+  const promptPath = path.join(dir, "system-prompt.md");
+  fs.writeFileSync(promptPath, "first prompt\n", "utf8");
+  clearSystemPromptCache();
+  assert.equal(applySystemPromptOverride("base", {
+    systemPromptOverride: true,
+    systemPromptPath: promptPath
+  }), "first prompt");
+  await new Promise(resolve => setTimeout(resolve, 5));
+  fs.writeFileSync(promptPath, "second prompt\n", "utf8");
+  assert.equal(applySystemPromptOverride("base", {
+    systemPromptOverride: true,
+    systemPromptPath: promptPath,
+    systemPromptVersion: String(Date.now())
+  }), "second prompt");
+});
+
+test("parseGetChatMessageRequest applies runtime system prompt override", () => {
+  setRuntimeConfig({
+    systemPromptOverride: true,
+    systemPromptText: "runtime custom prompt",
+    systemPromptVersion: String(Date.now()),
+    BYOK1_MODEL: "claude-sonnet-4-6",
+    defaultModel: "claude-sonnet-4-6"
+  });
+  const proto = Buffer.concat([
+    writeStringField(2, "base system prompt"),
+    writeStringField(6, "hello"),
+    writeStringField(21, "MODEL_CLAUDE_4_OPUS_BYOK")
+  ]);
+  const parsed = parseGetChatMessageRequest(wrapEnvelope(proto, false), {});
+  assert.equal(parsed.systemPrompt, "runtime custom prompt");
+  setRuntimeConfig({
+    systemPromptOverride: false,
+    systemPromptText: "",
+    systemPromptVersion: ""
+  });
 });
 
 test("shouldFallbackToChatCompletions detects unsupported responses gateways", () => {
@@ -347,6 +470,201 @@ test("external config importer reads Claude and Codex user config files", () => 
   assert.equal(codex.model, "gpt-5.5");
 });
 
+test("shouldInterceptByokChat only matches BYOK entry models", () => {
+  function buildChatBody(modelId) {
+    const proto = Buffer.concat([
+      writeStringField(2, "system"),
+      writeStringField(21, modelId)
+    ]);
+    return wrapEnvelope(proto, false);
+  }
+  const headers = {};
+
+  assert.equal(getByokSlot("MODEL_CLAUDE_4_OPUS_BYOK"), 1);
+  assert.equal(getByokSlot("MODEL_CLAUDE_4_OPUS_THINKING_BYOK"), 2);
+  assert.equal(getByokSlot("MODEL_CLAUDE_4_OPUS"), null);
+
+  assert.equal(shouldInterceptByokChat(buildChatBody("MODEL_CLAUDE_4_OPUS_BYOK"), headers), true);
+  assert.equal(shouldInterceptByokChat(buildChatBody("MODEL_CLAUDE_4_OPUS_THINKING_BYOK"), headers), true);
+  assert.equal(shouldInterceptByokChat(buildChatBody("MODEL_CLAUDE_4_OPUS"), headers), false);
+  assert.equal(shouldInterceptByokChat(buildChatBody("MODEL_SWE_1_5"), headers), false);
+  assert.equal(peekRequestedModel(buildChatBody("MODEL_CLAUDE_4_OPUS_BYOK"), headers), "MODEL_CLAUDE_4_OPUS_BYOK");
+});
+
+test("applyAnthropicPromptCache marks system tools and message prefix", () => {
+  const body = applyAnthropicPromptCache({
+    model: "claude-sonnet-4-20250514",
+    system: "system prompt",
+    messages: [{
+      role: "user",
+      content: "one"
+    }, {
+      role: "assistant",
+      content: "two"
+    }, {
+      role: "user",
+      content: "three"
+    }, {
+      role: "assistant",
+      content: "four"
+    }],
+    tools: [{
+      name: "alpha",
+      description: "a"
+    }, {
+      name: "beta",
+      description: "b"
+    }]
+  }, {
+    enabled: true,
+    anthropic: true,
+    tailMessages: 2
+  });
+
+  assert.equal(Array.isArray(body.system), true);
+  assert.equal(body.system[0].cache_control.type, "ephemeral");
+  assert.equal(body.tools[1].cache_control.type, "ephemeral");
+  assert.equal(body.messages[1].content[0].cache_control.type, "ephemeral");
+  assert.equal(body.messages[2].content?.[0]?.cache_control, undefined);
+  assert.equal(body.messages[3].content?.[0]?.cache_control, undefined);
+});
+
+test("applyAnthropicPromptCache preserves additional volatile tail messages", () => {
+  const body = applyAnthropicPromptCache({
+    model: "claude-sonnet-4-20250514",
+    messages: [{
+      role: "user",
+      content: "one"
+    }, {
+      role: "assistant",
+      content: "two"
+    }, {
+      role: "user",
+      content: "three"
+    }, {
+      role: "assistant",
+      content: "four"
+    }]
+  }, {
+    enabled: true,
+    anthropic: true,
+    tailMessages: 1,
+    additionalTailMessages: 1
+  });
+
+  assert.equal(body.messages[1].content[0].cache_control.type, "ephemeral");
+  assert.equal(body.messages[2].content?.[0]?.cache_control, undefined);
+  assert.equal(body.messages[3].content?.[0]?.cache_control, undefined);
+});
+
+test("shouldRetryWithoutPromptCache detects cache-related upstream errors", () => {
+  assert.equal(shouldRetryWithoutPromptCache(400, "cache_control is not supported"), true);
+  assert.equal(shouldRetryWithoutPromptCache(422, "invalid prompt caching breakpoint"), true);
+  assert.equal(shouldRetryWithoutPromptCache(500, "upstream timeout"), false);
+});
+
+test("sortToolsForStablePrefix orders tools by name", () => {
+  const sorted = sortToolsForStablePrefix([{
+    name: "zebra"
+  }, {
+    name: "alpha"
+  }], {
+    config: {
+      sortTools: true
+    }
+  });
+  assert.deepEqual(sorted.map(tool => tool.name), ["alpha", "zebra"]);
+});
+
+test("mergeUsage accepts null base from stream processors", () => {
+  const usage = mergeUsage(null, {
+    input_tokens: 1000,
+    output_tokens: 50,
+    cached_tokens: 800
+  });
+  assert.equal(usage.input_tokens, 1000);
+  assert.equal(usage.cached_tokens, 800);
+});
+
+test("mergeUsage tolerates missing and non-object usage patches", () => {
+  assert.deepEqual(mergeUsage(null, null), {
+    input_tokens: 0,
+    output_tokens: 0,
+    cache_creation_input_tokens: 0,
+    cache_read_input_tokens: 0,
+    cached_tokens: 0
+  });
+  assert.deepEqual(mergeUsage("bad", "bad"), {
+    input_tokens: 0,
+    output_tokens: 0,
+    cache_creation_input_tokens: 0,
+    cache_read_input_tokens: 0,
+    cached_tokens: 0
+  });
+});
+
+test("OpenAI response.completed without usage does not crash stream processor", () => {
+  const processor = new OpenAIStreamProcessor("msg-1", "gpt-test");
+  const chunks = processor.processEvent({
+    done: false,
+    type: "response.completed",
+    data: {
+      type: "response.completed",
+      response: {
+        status: "completed"
+      }
+    }
+  });
+  assert.equal(processor.isDone, true);
+  assert.equal(processor.stopReason, "stop");
+  assert.ok(Array.isArray(chunks));
+});
+
+test("formatUsageLog tolerates non-object usage and meta", () => {
+  const line = formatUsageLog(null, "OpenAI", "bad");
+  assert.match(line, /OpenAI tokens: input=0/);
+  assert.match(line, /cached=0/);
+});
+
+test("formatUsageLog reports cache hit rate", () => {
+  const usage = extractOpenAIResponsesUsage({
+    data: {
+      response: {
+        usage: {
+          input_tokens: 100000,
+          output_tokens: 500,
+          input_tokens_details: {
+            cached_tokens: 92000
+          }
+        }
+      }
+    }
+  });
+  assert.equal(computeCacheHitRate(usage), 92);
+  assert.match(formatUsageLog(usage, "OpenAI"), /cached=92000/);
+  assert.match(formatUsageLog(usage, "OpenAI"), /hit=92%/);
+});
+
+test("formatUsageLog includes cache metadata fields", () => {
+  const usage = {
+    input_tokens: 1200,
+    output_tokens: 80,
+    cached_tokens: 600
+  };
+  const line = formatUsageLog(usage, "OpenAI", {
+    mode: "responses",
+    route: "/v1/responses",
+    cacheStatus: "eligible",
+    requestBytes: 4096,
+    fallback: "responses-to-chat"
+  });
+  assert.match(line, /mode=responses/);
+  assert.match(line, /route=\/v1\/responses/);
+  assert.match(line, /cache=eligible/);
+  assert.match(line, /req=4096b/);
+  assert.match(line, /fallback=responses-to-chat/);
+});
+
 test("PatchManager recognizes dynamic loopback patch URLs", () => {
   const rules = [{
     name: "P1: mock",
@@ -387,7 +705,10 @@ test("hybrid-server POST /api/config hot reload responds without timeout", {
     const posted = await httpJsonRequest(port, "POST", "/api/config", {
       defaultModel: "integration-test-model",
       BYOK1_MODEL: "integration-test-model",
-      BYOK2_MODEL: "integration-test-thinking"
+      BYOK2_MODEL: "integration-test-thinking",
+      SYSTEM_PROMPT_OVERRIDE: true,
+      systemPromptText: "integration prompt",
+      systemPromptVersion: String(Date.now())
     }, 2000);
     assert.equal(posted.status, 200, posted.body);
     assert.ok(posted.ms < 2000, "POST /api/config took " + posted.ms + "ms");
@@ -399,6 +720,8 @@ test("hybrid-server POST /api/config hot reload responds without timeout", {
     const current = JSON.parse(fetched.body);
     assert.equal(current.defaultModel, "integration-test-model");
     assert.equal(current.byok2.model, "integration-test-thinking");
+    assert.equal(current.systemPromptOverride, true);
+    assert.equal(current.systemPromptText, "integration prompt");
   } finally {
     child.kill("SIGTERM");
     await new Promise(resolve => {

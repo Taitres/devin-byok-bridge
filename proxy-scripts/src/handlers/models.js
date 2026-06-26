@@ -2,6 +2,7 @@ import https from "node:https";
 import http from "node:http";
 import { stripProtocol, parseHost, isLocalTarget } from "../net-utils.js";
 import { slotField, sanitizeThinkingEffort } from "./byok-slots.js";
+import { clearSystemPromptCache } from "./system-prompt.js";
 const _initialAnthropicHost = stripProtocol(process.env.ANTHROPIC_API_HOST || "");
 const _initialOpenaiHost = stripProtocol(process.env.OPENAI_API_HOST || _initialAnthropicHost);
 function readSlotConfigFromEnv(arg0, tmp1 = null) {
@@ -80,6 +81,10 @@ let _runtimeConfig = {
   openaiReasoningEffort: Object.prototype.hasOwnProperty.call(process.env, "OPENAI_REASONING_EFFORT") ? sanitizeReasoningEffort(process.env.OPENAI_REASONING_EFFORT) : "",
   openaiThinkingEnabled: sanitizeBooleanString(process.env.OPENAI_THINKING_ENABLED),
   completionTimeoutMs: sanitizePositiveInteger(process.env.COMPLETION_TIMEOUT_MS, 12000, 2000, 60000),
+  systemPromptOverride: sanitizeBooleanString(process.env.SYSTEM_PROMPT_OVERRIDE),
+  systemPromptPath: String(process.env.SYSTEM_PROMPT_PATH || "").trim(),
+  systemPromptText: "",
+  systemPromptVersion: String(process.env.SYSTEM_PROMPT_VERSION || "").trim(),
   byok1: readSlotConfigFromEnv(1, _legacySlotFallback),
   byok2: readSlotConfigFromEnv(2, _emptySlot)
 };
@@ -217,6 +222,52 @@ export function setRuntimeConfig(arg0) {
   setStringField(arg0, "OPENAI_REASONING_EFFORT", "openaiReasoningEffort", sanitizeReasoningEffort);
   if (Object.prototype.hasOwnProperty.call(arg0, "OPENAI_THINKING_ENABLED")) {
     _runtimeConfig.openaiThinkingEnabled = arg0.OPENAI_THINKING_ENABLED === true || sanitizeBooleanString(arg0.OPENAI_THINKING_ENABLED);
+  }
+  let tmp0 = false;
+  if (Object.prototype.hasOwnProperty.call(arg0, "SYSTEM_PROMPT_OVERRIDE")) {
+    const tmp02 = arg0.SYSTEM_PROMPT_OVERRIDE === true || sanitizeBooleanString(arg0.SYSTEM_PROMPT_OVERRIDE);
+    if (_runtimeConfig.systemPromptOverride !== tmp02) {
+      _runtimeConfig.systemPromptOverride = tmp02;
+      tmp0 = true;
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(arg0, "systemPromptOverride")) {
+    const tmp02 = arg0.systemPromptOverride === true || sanitizeBooleanString(arg0.systemPromptOverride);
+    if (_runtimeConfig.systemPromptOverride !== tmp02) {
+      _runtimeConfig.systemPromptOverride = tmp02;
+      tmp0 = true;
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(arg0, "SYSTEM_PROMPT_PATH")) {
+    const tmp02 = typeof arg0.SYSTEM_PROMPT_PATH === "string" ? arg0.SYSTEM_PROMPT_PATH.trim() : "";
+    if (_runtimeConfig.systemPromptPath !== tmp02) {
+      _runtimeConfig.systemPromptPath = tmp02;
+      tmp0 = true;
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(arg0, "systemPromptPath")) {
+    const tmp02 = typeof arg0.systemPromptPath === "string" ? arg0.systemPromptPath.trim() : "";
+    if (_runtimeConfig.systemPromptPath !== tmp02) {
+      _runtimeConfig.systemPromptPath = tmp02;
+      tmp0 = true;
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(arg0, "systemPromptText")) {
+    const tmp02 = typeof arg0.systemPromptText === "string" ? arg0.systemPromptText : "";
+    if (_runtimeConfig.systemPromptText !== tmp02) {
+      _runtimeConfig.systemPromptText = tmp02;
+      tmp0 = true;
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(arg0, "systemPromptVersion")) {
+    const tmp02 = typeof arg0.systemPromptVersion === "string" ? arg0.systemPromptVersion.trim() : String(arg0.systemPromptVersion || "").trim();
+    if (_runtimeConfig.systemPromptVersion !== tmp02) {
+      _runtimeConfig.systemPromptVersion = tmp02;
+      tmp0 = true;
+    }
+  }
+  if (tmp0) {
+    clearSystemPromptCache();
   }
   const tmp2 = Number.parseInt(String(arg0.COMPLETION_TIMEOUT_MS ?? ""), 10);
   if (Number.isInteger(tmp2) && tmp2 > 0) {

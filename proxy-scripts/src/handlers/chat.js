@@ -12,6 +12,8 @@ import { getProviderConfig, getRuntimeConfig, getSlotModel, getSlotThinkingEffor
 import { buildTextDelta } from "./build-response.js";
 import { emitChatStart, emitChatEnd, emitAIText, emitToolCall, emitStreamStatus, consumeInjectedMessages, getActiveMonitorTarget } from "../ws-bridge.js";
 import { buildGatewayCapabilityKey, getGatewayCapability, markGatewayCapability } from "./gateway-capability.js";
+import { applyAnthropicPromptCache, getPromptCacheConfig, prepareToolsForPromptCache, shouldOptimizeOpenAIPrefix, shouldRetryWithoutPromptCache } from "./prompt-cache.js";
+import { formatUsageLog } from "./usage-log.js";
 import { isResponsesApiPath, shouldFallbackToChatCompletions, toChatCompletionsMessages, toChatCompletionsPath } from "./openai-request.js";
 export { isResponsesApiPath, shouldFallbackToChatCompletions, toChatCompletionsMessages, toChatCompletionsPath } from "./openai-request.js";
 const keepAliveAgent = new https.Agent({
@@ -92,7 +94,7 @@ const ANTHROPIC_REQUEST_TIMEOUT_MS = parseInt(process.env.ANTHROPIC_REQUEST_TIME
 const ANTHROPIC_SSE_IDLE_TIMEOUT_MS = parseInt(process.env.ANTHROPIC_SSE_IDLE_TIMEOUT_MS || "120000", 10);
 const OPENAI_REASONING_SUMMARY = process.env.OPENAI_REASONING_SUMMARY || "auto";
 const OPENAI_ENABLE_REASONING = process.env.OPENAI_ENABLE_REASONING !== "false";
-const EXPOSE_BACKEND_INFO = process.env.EXPOSE_BACKEND_INFO !== "false";
+const EXPOSE_BACKEND_INFO = process.env.EXPOSE_BACKEND_INFO === "true";
 const ANTHROPIC_FALLBACK_MODEL = "claude-sonnet-4-20250514";
 const ANTHROPIC_FALLBACK_THINKING_MODEL = "claude-sonnet-4-20250514-thinking";
 function createTimingTracker(arg0, tmp1 = {}, tmp2 = null) {
@@ -309,10 +311,7 @@ export function handleGetChatMessage(arg0, arg1, arg2) {
   const tmp18 = consumeInjectedMessages();
   if (tmp18.length > 0) {
     for (const tmp02 of tmp18) {
-      const tmp03 = {
-        role: tmp02.role,
-        content: tmp02.content
-      };
+      const tmp03 = toInjectedTailMessage(tmp02);
       tmp4.push(tmp03);
     }
     console.log("  📨 Injected " + tmp18.length + " message(s) from App");
@@ -345,6 +344,11 @@ export function handleGetChatMessage(arg0, arg1, arg2) {
   };
   const tmp21 = createTimingTracker("chat", tmp20, tmp19);
   tmp21.mark("parsed", "messages=" + tmp4.length + " tools=" + (tmp5 ? tmp5.length : 0));
+  if (tmp5?.length) {
+    tmp5 = prepareToolsForPromptCache(tmp5, tmp17, {
+      config: getPromptCacheConfig()
+    });
+  }
   if (tmp12) {
     const tmp02 = {
       systemPrompt: tmp3,
@@ -495,12 +499,95 @@ function getForwardedToolChoice(arg0, arg1, arg2) {
   console.log("  ⚠️  Ignoring " + arg2 + " named tool_choice \"" + arg1.name + "\" because the tool definition is unavailable");
   return undefined;
 }
+export function toInjectedTailMessage(arg0) {
+  return {
+    role: arg0.role,
+    content: arg0.content,
+    _volatileTail: true
+  };
+}
+
 function shouldRetryWithoutGeminiThinking(arg0, arg1) {
   if (![400, 422, 500, 501, 502].includes(arg0)) {
     return false;
   }
   const tmp1 = String(arg1 || "").toLowerCase();
   return /thinking_config|thinking.*unsupported|extra_body|unknown.*thinking|invalid.*thinking|unsupported.*field|unrecognized.*field|additional properties/.test(tmp1);
+}
+function countInjectedTailMessages(messages = []) {
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return 0;
+  }
+  let count = 0;
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    if (messages[i]?._volatileTail !== true) {
+      break;
+    }
+    count += 1;
+  }
+  return count;
+}
+
+function stripInternalMessageMetadata(messages = []) {
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return messages;
+  }
+  let changed = false;
+  const next = messages.map(message => {
+    if (!message || typeof message !== "object" || message._volatileTail !== true) {
+      return message;
+    }
+    changed = true;
+    const {
+      _volatileTail,
+      ...rest
+    } = message;
+    return rest;
+  });
+  return changed ? next : messages;
+}
+
+function toUsageCacheStatus(provider, usage, meta = {}) {
+  const normalizedProvider = String(provider || "").trim().toLowerCase();
+  if (normalizedProvider === "anthropic") {
+    if (meta.promptCacheRejected) {
+      return "unsupported";
+    }
+    if (meta.promptCacheEnabled === false) {
+      return "off";
+    }
+    if (usage?.cache_read_input_tokens || usage?.cache_creation_input_tokens) {
+      return "hit";
+    }
+    if (meta.promptCacheEnabled) {
+      return "eligible";
+    }
+    return "off";
+  }
+  if (usage?.cached_tokens || usage?.cache_read_input_tokens) {
+    return "hit";
+  }
+  if (meta.cacheStatus === "unsupported" || meta.cacheStatus === "off") {
+    return meta.cacheStatus;
+  }
+  if (meta.openaiCacheMode === "off") {
+    return "off";
+  }
+  return meta.openaiCacheMode === "auto" ? "eligible" : "observe";
+}
+
+function logUpstreamUsage(processor, provider, meta = {}) {
+  if (!processor?.getUsage) {
+    return;
+  }
+  const usage = processor.getUsage();
+  if (!usage) {
+    return;
+  }
+  console.log("  " + formatUsageLog(usage, provider, {
+    ...meta,
+    cacheStatus: toUsageCacheStatus(provider, usage, meta)
+  }));
 }
 function mapChatCompletionsToolChoice(arg0) {
   if (!arg0) {
@@ -663,7 +750,8 @@ function attachOpenAISseStream(arg02, {
   lifecycle: tmp24,
   timing: tmp10,
   clientResponse: tmp11,
-  onStreamEnd: fn
+  onStreamEnd: fn,
+  usageMeta: tmp12 = {}
 }) {
   const tmp1 = new StringDecoder("utf8");
   let sseBuffer = "";
@@ -688,6 +776,17 @@ function attachOpenAISseStream(arg02, {
       arg02.destroy();
     }, OPENAI_SSE_IDLE_TIMEOUT_MS);
   };
+  let streamFinished = false;
+  const finishStream = message => {
+    if (streamFinished) {
+      return;
+    }
+    streamFinished = true;
+    tmp26 = true;
+    fn2();
+    logUpstreamUsage(tmp13, "OpenAI", tmp12);
+    tmp24.finalize(message);
+  };
   function processPart(arg03) {
     const tmp110 = parseOpenAISSEChunk(arg03 + "\n");
     for (const tmp02 of tmp110) {
@@ -697,9 +796,7 @@ function attachOpenAISseStream(arg02, {
       }
     }
     if (tmp13.isDone) {
-      tmp26 = true;
-      fn2();
-      tmp24.finalize("  ✅ OpenAI stream done (stop: " + tmp13.stopReason + ")");
+      finishStream("  ✅ OpenAI stream done (stop: " + tmp13.stopReason + ")");
     }
   }
   fn3();
@@ -716,8 +813,6 @@ function attachOpenAISseStream(arg02, {
     }
   });
   arg02.on("end", () => {
-    tmp26 = true;
-    fn2();
     sseBuffer += tmp1.end();
     if (sseBuffer.trim()) {
       processPart(sseBuffer);
@@ -733,7 +828,7 @@ function attachOpenAISseStream(arg02, {
         tmp24.safeWrite(wrapEnvelope(tmp03));
       }
     }
-    tmp24.finalize("  ✅ OpenAI stream ended (stop: " + tmp13.stopReason + ")");
+    finishStream("  ✅ OpenAI stream ended (stop: " + tmp13.stopReason + ")");
   });
   arg02.on("aborted", () => {
     tmp26 = true;
@@ -770,182 +865,236 @@ function streamAnthropic(arg0, arg1, {
 }) {
   const tmp12 = getProviderConfig(tmp11).anthropic;
   const tmp13 = getForwardedToolChoice(tmp4, tmp5, "Anthropic");
-  const tmp14 = {
-    model: tmp6,
-    system: tmp2 || undefined,
-    messages: tmp3,
-    stream: true,
-    max_tokens: getMaxTokens()
+  const tmp19 = tmp12.useHttp ? http : https;
+  const tmp20 = tmp12.parsed.port !== 443 ? tmp12.parsed.port : tmp12.useHttp ? 80 : 443;
+  const tmp37 = tmp12.useHttp ? "http" : "https";
+  const tmp41 = buildGatewayCapabilityKey({
+    protocol: tmp37,
+    host: tmp12.parsed.hostname,
+    port: tmp20,
+    apiPath: tmp12.apiPath,
+    providerKind: "anthropic",
+    slot: tmp11 || "default"
+  });
+  const tmp42 = getGatewayCapability(tmp41);
+  const tmp43Base = getPromptCacheConfig();
+  let tmp43 = tmp43Base.anthropic && !tmp42?.promptCacheUnsupported;
+  let tmp44 = false;
+  const buildPayload = () => {
+    const tmp14 = {
+      model: tmp6,
+      system: tmp2 || undefined,
+      messages: stripInternalMessageMetadata(tmp3),
+      stream: true,
+      max_tokens: getMaxTokens()
+    };
+    if (tmp4 && tmp4.length > 0) {
+      tmp14.tools = tmp4;
+      if (tmp13) {
+        tmp14.tool_choice = tmp13;
+      }
+    }
+    if (tmp10?.thinkingEnabled) {
+      const tmp02 = buildAnthropicThinkingPayload(tmp6, tmp10.reasoningEffort, "medium");
+      if (tmp02?.thinking) {
+        tmp14.thinking = tmp02.thinking;
+        if (tmp02.output_config) {
+          tmp14.output_config = tmp02.output_config;
+        }
+        const tmp03 = tmp14.thinking.budget_tokens || tmp10.thinkingBudget || thinkingEffortToAnthropicBudget(tmp10.reasoningEffort) || 0;
+        if (tmp03 > 0 && tmp14.max_tokens <= tmp03) {
+          tmp14.max_tokens = Math.min(getMaxTokens(), tmp03 + 8192);
+        }
+      }
+    }
+    return tmp43 ? applyAnthropicPromptCache(tmp14, {
+      ...tmp43Base,
+      additionalTailMessages: countInjectedTailMessages(tmp3)
+    }) : tmp14;
   };
-  if (tmp4 && tmp4.length > 0) {
-    tmp14.tools = tmp4;
-    if (tmp13) {
-      tmp14.tool_choice = tmp13;
-    }
-  }
-  if (tmp10?.thinkingEnabled) {
-    const tmp02 = buildAnthropicThinkingPayload(tmp6, tmp10.reasoningEffort, "medium");
-    if (tmp02?.thinking) {
-      tmp14.thinking = tmp02.thinking;
-      if (tmp02.output_config) {
-        tmp14.output_config = tmp02.output_config;
-      }
-      const tmp03 = tmp14.thinking.budget_tokens || tmp10.thinkingBudget || thinkingEffortToAnthropicBudget(tmp10.reasoningEffort) || 0;
-      if (tmp03 > 0 && tmp14.max_tokens <= tmp03) {
-        tmp14.max_tokens = Math.min(getMaxTokens(), tmp03 + 8192);
-      }
-    }
-  }
-  const tmp15 = tmp14.thinking ? tmp14.thinking.type === "adaptive" ? "adaptive effort=" + (tmp14.output_config?.effort || tmp10?.reasoningEffort || "medium") : "enabled budget=" + (tmp14.thinking.budget_tokens || "?") + (tmp10?.reasoningEffort ? " effort=" + tmp10.reasoningEffort : "") : "off";
+  const tmp15 = tmp14ThinkingLabel(buildPayload());
   console.log("  🧩 Anthropic/Sub2API thinking: " + tmp15);
-  const tmp16 = JSON.stringify(tmp14);
   arg1.writeHead(200, streamHeaders());
   const processor = new AnthropicStreamProcessor(tmp7, tmp6, tmp9);
   let tmp17;
   const tmp18 = createStreamLifecycle(arg1, () => tmp17, "Anthropic", tmp7, tmp8);
-  const tmp19 = tmp12.useHttp ? http : https;
-  const tmp20 = tmp12.parsed.port !== 443 ? tmp12.parsed.port : tmp12.useHttp ? 80 : 443;
-  console.log("  → Anthropic " + tmp12.host + tmp12.apiPath + " model=" + tmp6 + " key=" + (tmp12.apiKey ? "set" : "empty"));
-  if (tmp8) {
-    tmp8.mark("upstream_request_start", "bytes=" + Buffer.byteLength(tmp16));
-  }
-  tmp17 = tmp19.request({
-    hostname: tmp12.parsed.hostname,
-    port: tmp20,
-    path: tmp12.apiPath,
-    method: "POST",
-    agent: tmp12.useHttp ? undefined : keepAliveAgent,
-    rejectUnauthorized: !tmp12.useHttp && tmp12.parsed.port === 443,
-    headers: {
-      "content-type": "application/json",
-      accept: "text/event-stream",
-      "anthropic-version": "2023-06-01",
-      "x-api-key": tmp12.apiKey,
-      "content-length": Buffer.byteLength(tmp16),
-      ...proxyHeaders(tmp6, Buffer.byteLength(tmp16))
-    }
-  }, arg02 => {
+  console.log("  → Anthropic " + tmp12.host + tmp12.apiPath + " model=" + tmp6 + " key=" + (tmp12.apiKey ? "set" : "empty") + (tmp43 ? " cache=on" : " cache=off"));
+  const sendAnthropicRequest = () => {
+    const payload = buildPayload();
+    const tmp16 = JSON.stringify(payload);
     if (tmp8) {
-      tmp8.mark("upstream_headers", "status=" + arg02.statusCode);
+      tmp8.mark("upstream_request_start", "bytes=" + Buffer.byteLength(tmp16));
     }
-    let sseBuffer = "";
-    if (arg02.statusCode !== 200) {
-      console.error("  ❌ Anthropic API returned " + arg02.statusCode);
-      let tmp02 = "";
-      arg02.setEncoding("utf8");
-      arg02.on("data", arg03 => tmp02 += arg03);
-      arg02.on("end", () => {
-        console.error("  ❌ Body: " + sanitizeLogBody(tmp02));
-        const tmp03 = buildProviderErrorMessage("Anthropic", arg02.statusCode, tmp02);
-        tmp18.fail(tmp03);
-      });
-      return;
-    }
-    arg02.setEncoding("utf8");
-    let tmp1 = null;
-    let tmp22 = false;
-    tmp18.startHeartbeat();
-    const fn = () => {
-      if (tmp1) {
-        clearTimeout(tmp1);
-        tmp1 = null;
+    tmp17 = tmp19.request({
+      hostname: tmp12.parsed.hostname,
+      port: tmp20,
+      path: tmp12.apiPath,
+      method: "POST",
+      agent: tmp12.useHttp ? undefined : keepAliveAgent,
+      rejectUnauthorized: !tmp12.useHttp && tmp12.parsed.port === 443,
+      headers: {
+        "content-type": "application/json",
+        accept: "text/event-stream",
+        "anthropic-version": "2023-06-01",
+        ...(tmp43 ? {
+          "anthropic-beta": "prompt-caching-2024-07-31"
+        } : {}),
+        "x-api-key": tmp12.apiKey,
+        "content-length": Buffer.byteLength(tmp16),
+        ...proxyHeaders(tmp6, Buffer.byteLength(tmp16))
       }
-    };
-    const fn2 = () => {
-      fn();
-      tmp1 = setTimeout(() => {
-        if (tmp22 || tmp18.wasClosedByClient()) {
+    }, arg02 => {
+      if (tmp8) {
+        tmp8.mark("upstream_headers", "status=" + arg02.statusCode);
+      }
+      let sseBuffer = "";
+      if (arg02.statusCode !== 200) {
+        console.error("  ❌ Anthropic API returned " + arg02.statusCode);
+        let tmp02 = "";
+        arg02.setEncoding("utf8");
+        arg02.on("data", arg03 => tmp02 += arg03);
+        arg02.on("end", () => {
+          console.error("  ❌ Body: " + sanitizeLogBody(tmp02));
+          if (tmp43 && shouldRetryWithoutPromptCache(arg02.statusCode, tmp02)) {
+            tmp43 = false;
+            tmp44 = true;
+            markGatewayCapability(tmp41, {
+              promptCacheUnsupported: true,
+              reason: "prompt cache rejected: HTTP " + arg02.statusCode
+            });
+            console.log("  ↩️  Anthropic prompt cache unsupported — retrying without cache_control");
+            sendAnthropicRequest();
+            return;
+          }
+          const tmp03 = buildProviderErrorMessage("Anthropic", arg02.statusCode, tmp02);
+          tmp18.fail(tmp03);
+        });
+        return;
+      }
+      arg02.setEncoding("utf8");
+      let tmp1 = null;
+      let tmp22 = false;
+      tmp18.startHeartbeat();
+      const fn = () => {
+        if (tmp1) {
+          clearTimeout(tmp1);
+          tmp1 = null;
+        }
+      };
+      const fn2 = () => {
+        fn();
+        tmp1 = setTimeout(() => {
+          if (tmp22 || tmp18.wasClosedByClient()) {
+            return;
+          }
+          console.error("  ❌ Anthropic stream stalled after " + ANTHROPIC_SSE_IDLE_TIMEOUT_MS + "ms without data");
+          tmp18.fail("[Anthropic Stream Timeout]");
+          arg02.destroy();
+        }, ANTHROPIC_SSE_IDLE_TIMEOUT_MS);
+      };
+      let streamFinished = false;
+      const finishStream = message => {
+        if (streamFinished) {
           return;
         }
-        console.error("  ❌ Anthropic stream stalled after " + ANTHROPIC_SSE_IDLE_TIMEOUT_MS + "ms without data");
-        tmp18.fail("[Anthropic Stream Timeout]");
-        arg02.destroy();
-      }, ANTHROPIC_SSE_IDLE_TIMEOUT_MS);
-    };
-    function processPart(arg03) {
-      const tmp110 = parseSSEChunk(arg03 + "\n\n");
-      for (const tmp02 of tmp110) {
-        const tmp03 = processor.processEvent(tmp02);
-        for (const tmp04 of tmp03) {
-          tmp18.safeWrite(wrapEnvelope(tmp04));
-        }
-      }
-      if (processor.isDone) {
+        streamFinished = true;
         tmp22 = true;
         fn();
-        tmp18.finalize("  ✅ Stream done (stop: " + processor.stopReason + ")");
-      }
-    }
-    fn2();
-    arg02.on("data", arg03 => {
-      if (tmp8) {
-        tmp8.mark("first_upstream_chunk", "bytes=" + Buffer.byteLength(arg03));
-      }
-      fn2();
-      sseBuffer += arg03;
-      const tmp110 = sseBuffer.split("\n\n");
-      sseBuffer = tmp110.pop();
-      for (const tmp02 of tmp110) {
-        processPart(tmp02);
-      }
-    });
-    arg02.on("end", () => {
-      tmp22 = true;
-      fn();
-      if (sseBuffer.trim()) {
-        processPart(sseBuffer);
-      }
-      if (!processor.isDone && !arg1.writableEnded) {
-        console.log("  ⚠️  Anthropic stream ended without message_stop — forcing stop");
-        const tmp02 = processor.processEvent({
-          event: "message_stop",
-          data: {}
+        logUpstreamUsage(processor, "Anthropic", {
+          mode: "messages",
+          route: tmp12.apiPath,
+          requestBytes: tmp16 ? Buffer.byteLength(tmp16) : 0,
+          promptCacheEnabled: tmp43,
+          promptCacheRejected: tmp44,
+          fallback: tmp44 ? "no-cache-retry" : ""
         });
-        for (const tmp03 of tmp02) {
-          tmp18.safeWrite(wrapEnvelope(tmp03));
+        tmp18.finalize(message);
+      };
+      function processPart(arg03) {
+        const tmp110 = parseSSEChunk(arg03 + "\n\n");
+        for (const tmp02 of tmp110) {
+          const tmp03 = processor.processEvent(tmp02);
+          for (const tmp04 of tmp03) {
+            tmp18.safeWrite(wrapEnvelope(tmp04));
+          }
+        }
+        if (processor.isDone) {
+          finishStream("  ✅ Stream done (stop: " + processor.stopReason + ")");
         }
       }
-      tmp18.finalize("  ✅ Stream ended");
+      fn2();
+      arg02.on("data", arg03 => {
+        if (tmp8) {
+          tmp8.mark("first_upstream_chunk", "bytes=" + Buffer.byteLength(arg03));
+        }
+        fn2();
+        sseBuffer += arg03;
+        const tmp110 = sseBuffer.split("\n\n");
+        sseBuffer = tmp110.pop();
+        for (const tmp02 of tmp110) {
+          processPart(tmp02);
+        }
+      });
+      arg02.on("end", () => {
+        if (sseBuffer.trim()) {
+          processPart(sseBuffer);
+        }
+        if (!processor.isDone && !arg1.writableEnded) {
+          console.log("  ⚠️  Anthropic stream ended without message_stop — forcing stop");
+          const tmp02 = processor.processEvent({
+            event: "message_stop",
+            data: {}
+          });
+          for (const tmp03 of tmp02) {
+            tmp18.safeWrite(wrapEnvelope(tmp03));
+          }
+        }
+        finishStream("  ✅ Stream ended");
+      });
+      arg02.on("aborted", () => {
+        tmp22 = true;
+        fn();
+        if (tmp18.wasClosedByClient()) {
+          return;
+        }
+        console.error("  ❌ Anthropic stream aborted before completion");
+        tmp18.fail("[Stream Aborted]");
+      });
+      arg02.on("error", arg03 => {
+        tmp22 = true;
+        fn();
+        if (tmp18.wasClosedByClient()) {
+          return;
+        }
+        console.error("  ❌ Anthropic stream error: " + arg03.message);
+        tmp18.fail("[Stream Error]");
+      });
     });
-    arg02.on("aborted", () => {
-      tmp22 = true;
-      fn();
+    tmp17.setTimeout(ANTHROPIC_REQUEST_TIMEOUT_MS, () => {
       if (tmp18.wasClosedByClient()) {
         return;
       }
-      console.error("  ❌ Anthropic stream aborted before completion");
-      tmp18.fail("[Stream Aborted]");
+      console.error("  ❌ Anthropic request timeout after " + ANTHROPIC_REQUEST_TIMEOUT_MS + "ms");
+      tmp18.fail("[Anthropic Request Timeout]");
+      tmp17.destroy();
     });
-    arg02.on("error", arg03 => {
-      tmp22 = true;
-      fn();
-      if (tmp18.wasClosedByClient()) {
+    tmp17.on("error", arg02 => {
+      if (tmp18.wasClosedByClient() && (arg02.code === "ECONNRESET" || arg02.code === "ECONNABORTED")) {
         return;
       }
-      console.error("  ❌ Anthropic stream error: " + arg03.message);
-      tmp18.fail("[Stream Error]");
+      const tmp1 = describeNetworkError(arg02, tmp12.host, tmp12.parsed.port);
+      console.error("  ❌ Anthropic request error: " + tmp1);
+      tmp18.fail("[Anthropic Connection Error] " + tmp1);
     });
-  });
-  tmp17.setTimeout(ANTHROPIC_REQUEST_TIMEOUT_MS, () => {
-    if (tmp18.wasClosedByClient()) {
-      return;
+    tmp17.end(tmp16);
+    if (tmp8) {
+      tmp8.mark("upstream_request_sent");
     }
-    console.error("  ❌ Anthropic request timeout after " + ANTHROPIC_REQUEST_TIMEOUT_MS + "ms");
-    tmp18.fail("[Anthropic Request Timeout]");
-    tmp17.destroy();
-  });
-  tmp17.on("error", arg02 => {
-    if (tmp18.wasClosedByClient() && (arg02.code === "ECONNRESET" || arg02.code === "ECONNABORTED")) {
-      return;
-    }
-    const tmp1 = describeNetworkError(arg02, tmp12.host, tmp12.parsed.port);
-    console.error("  ❌ Anthropic request error: " + tmp1);
-    tmp18.fail("[Anthropic Connection Error] " + tmp1);
-  });
-  tmp17.end(tmp16);
-  if (tmp8) {
-    tmp8.mark("upstream_request_sent");
-  }
+  };
+  sendAnthropicRequest();
+}
+function tmp14ThinkingLabel(payload) {
+  return payload.thinking ? payload.thinking.type === "adaptive" ? "adaptive effort=" + (payload.output_config?.effort || "medium") : "enabled budget=" + (payload.thinking.budget_tokens || "?") : "off";
 }
 function streamOpenAI(arg0, arg1, {
   systemPrompt: tmp2,
@@ -962,6 +1111,7 @@ function streamOpenAI(arg0, arg1, {
   byokSlot: tmp13 = null
 }) {
   const tmp14 = getProviderConfig(tmp13).openai;
+  const tmp15 = getPromptCacheConfig();
   const tmp16 = shouldForwardOpenAITools(tmp9, tmp4);
   const tmp30 = {
     systemPrompt: tmp2,
@@ -998,13 +1148,27 @@ function streamOpenAI(arg0, arg1, {
     slot: tmp13 || "default"
   });
   const tmp40 = getGatewayCapability(tmp39);
+  const tmp41 = shouldOptimizeOpenAIPrefix({
+    config: tmp15
+  });
+  const tmp42 = tmp15.openaiMode;
+  const buildOpenAIUsageMeta = (mode, route, fallback = "") => ({
+    mode,
+    route,
+    openaiCacheMode: tmp42,
+    cacheStatus: tmp41 ? tmp42 : "off",
+    ...(fallback ? {
+      fallback
+    } : {})
+  });
   if (isResponsesApiPath(tmp14.apiPath) && tmp40?.preferChatCompletions) {
     console.log("  ↩️  using cached chat-completions for " + tmp14.parsed.hostname + " (" + (tmp40.reason || "responses unsupported") + ")");
     tmp33.push({
       path: toChatCompletionsPath(tmp14.apiPath),
       body: tmp32,
       mode: "chat",
-      cacheKey: tmp39
+      cacheKey: tmp39,
+      usageMeta: buildOpenAIUsageMeta("chat", toChatCompletionsPath(tmp14.apiPath), "responses-already-disabled")
     });
     if (tmp36) {
       tmp33.push({
@@ -1012,7 +1176,8 @@ function streamOpenAI(arg0, arg1, {
         body: tmp36,
         mode: "chat",
         withoutGeminiThinking: true,
-        cacheKey: tmp39
+        cacheKey: tmp39,
+        usageMeta: buildOpenAIUsageMeta("chat", toChatCompletionsPath(tmp14.apiPath), "omit-gemini-thinking")
       });
     }
   } else if (isResponsesApiPath(tmp14.apiPath)) {
@@ -1020,13 +1185,15 @@ function streamOpenAI(arg0, arg1, {
       path: tmp14.apiPath,
       body: tmp31,
       mode: "responses",
-      cacheKey: tmp39
+      cacheKey: tmp39,
+      usageMeta: buildOpenAIUsageMeta("responses", tmp14.apiPath)
     });
     tmp33.push({
       path: toChatCompletionsPath(tmp14.apiPath),
       body: tmp32,
       mode: "chat",
-      cacheKey: tmp39
+      cacheKey: tmp39,
+      usageMeta: buildOpenAIUsageMeta("chat", toChatCompletionsPath(tmp14.apiPath), "responses-to-chat")
     });
     if (tmp36) {
       tmp33.push({
@@ -1034,7 +1201,8 @@ function streamOpenAI(arg0, arg1, {
         body: tmp36,
         mode: "chat",
         withoutGeminiThinking: true,
-        cacheKey: tmp39
+        cacheKey: tmp39,
+        usageMeta: buildOpenAIUsageMeta("chat", toChatCompletionsPath(tmp14.apiPath), "omit-gemini-thinking")
       });
     }
   } else {
@@ -1046,7 +1214,8 @@ function streamOpenAI(arg0, arg1, {
       path: tmp14.apiPath || "/v1/chat/completions",
       body: tmp32,
       mode: "chat",
-      cacheKey: tmp39
+      cacheKey: tmp39,
+      usageMeta: buildOpenAIUsageMeta("chat", tmp14.apiPath || "/v1/chat/completions")
     });
     if (tmp36) {
       tmp33.push({
@@ -1054,7 +1223,8 @@ function streamOpenAI(arg0, arg1, {
         body: tmp36,
         mode: "chat",
         withoutGeminiThinking: true,
-        cacheKey: tmp39
+        cacheKey: tmp39,
+        usageMeta: buildOpenAIUsageMeta("chat", tmp14.apiPath || "/v1/chat/completions", "omit-gemini-thinking")
       });
     }
   }
@@ -1089,9 +1259,15 @@ function streamOpenAI(arg0, arg1, {
       processor.setAllowedTools(tmp4.map(arg02 => arg02.name));
     }
     const tmp03 = JSON.stringify(tmp02.body);
-    console.log("  → OpenAI " + (tmp14.useHttp ? "http" : "https") + "://" + tmp14.parsed.hostname + ":" + tmp28 + tmp02.path + " model=" + tmp6 + " key=" + tmp29);
+    const tmp04 = tmp02.usageMeta || {
+      mode: tmp02.mode,
+      route: tmp02.path,
+      openaiCacheMode: tmp42,
+      cacheStatus: tmp41 ? tmp42 : "off"
+    };
+    console.log("  → OpenAI " + (tmp14.useHttp ? "http" : "https") + "://" + tmp14.parsed.hostname + ":" + tmp28 + tmp02.path + " model=" + tmp6 + " key=" + tmp29 + " cache=" + tmp04.cacheStatus + " mode=" + tmp04.mode);
     if (tmp10) {
-      tmp10.mark(tmp34 === 1 ? "upstream_request_start" : "upstream_fallback_start", "bytes=" + Buffer.byteLength(tmp03) + " tools=" + (tmp16 && tmp4 ? tmp4.length : 0));
+      tmp10.mark(tmp34 === 1 ? "upstream_request_start" : "upstream_fallback_start", "bytes=" + Buffer.byteLength(tmp03) + " tools=" + (tmp16 && tmp4 ? tmp4.length : 0) + " cache=" + tmp04.cacheStatus + " mode=" + tmp04.mode);
     }
     tmp23 = tmp27.request({
       hostname: tmp14.parsed.hostname,
@@ -1143,7 +1319,11 @@ function streamOpenAI(arg0, arg1, {
         lifecycle: tmp24,
         timing: tmp10,
         clientResponse: arg1,
-        onStreamEnd: fn
+        onStreamEnd: fn,
+        usageMeta: {
+          ...tmp04,
+          requestBytes: Buffer.byteLength(tmp03)
+        }
       });
     });
     tmp23.setTimeout(OPENAI_REQUEST_TIMEOUT_MS, () => {

@@ -4,14 +4,18 @@ import net from "node:net";
 import tls from "node:tls";
 import fs from "node:fs";
 import { handleGetChatMessage } from "./handlers/chat.js";
-import { handleGetWebSearchResults, handleGetWebSearchRedirect } from "./handlers/web-search.js";
-import { handleGetEmbeddings } from "./handlers/embeddings.js";
+import { shouldInterceptByokChat } from "./handlers/byok-slots.js";
 import { handleModelsRequest, handleConfigRequest } from "./handlers/models.js";
 import { parseFields, writeStringField, writeBytesField, writeVarintField, writeFixed64Field, writeFixed32Field } from "./proto.js";
-import { tryGunzip } from "./connect.js";
+import { tryGunzip, sanitizeUpstreamResponseHeaders, writeConnectStreamErrorHttp1 } from "./connect.js";
 import crypto from "node:crypto";
 import { startWSBridge, getChatQueue, ackChatQueue, pushChatQueue, setActiveMonitorTarget } from "./ws-bridge.js";
 import { getLoopbackListenHosts, loopbackApiUrl } from "./net-utils.js";
+const upstreamHttpsAgent = new https.Agent({
+  keepAlive: true,
+  keepAliveMsecs: 30000,
+  maxSockets: 20
+});
 const _DEVICE_ID = process.env.PROXY_DEVICE_ID || "";
 const _SESSION_SECRET = process.env.PROXY_SESSION_SECRET || "";
 function signUpstreamRequest(arg0, arg1, arg2) {
@@ -123,7 +127,7 @@ function rewriteRegisterUser(arg0) {
     return arg0;
   }
 }
-const STREAMING_METHODS = new Set(["GetStreamingCompletions", "GetStreamingExternalChatCompletions"]);
+const STREAMING_METHODS = new Set(["GetChatMessage", "GetStreamingCompletions", "GetStreamingExternalChatCompletions"]);
 function proxyToCodeium(arg0, arg1, arg2, arg3, tmp4 = {}) {
   const tmp5 = getRpcMethod(arg0.url);
   const tmp6 = getUpstreamHost(arg0.url);
@@ -143,18 +147,23 @@ function proxyToCodeium(arg0, arg1, arg2, arg3, tmp4 = {}) {
     port: 443,
     path: tmp7,
     method: arg0.method,
-    headers: tmp10
+    headers: tmp10,
+    agent: upstreamHttpsAgent
   };
   const tmp13 = https.request(tmp12, arg02 => {
     if (tmp8) {
       console.log("  [#" + arg3 + "] ← " + arg02.statusCode + " (streaming " + tmp5 + ")");
-      arg1.writeHead(arg02.statusCode, {
-        ...arg02.headers
-      });
+      arg1.writeHead(arg02.statusCode, sanitizeUpstreamResponseHeaders(arg02.headers, true));
       arg02.pipe(arg1);
-      arg02.on("error", () => {
+      arg02.on("error", arg03 => {
+        console.error("  [#" + arg3 + "] ← stream error: " + arg03.message);
         if (!arg1.writableEnded) {
           arg1.end();
+        }
+      });
+      arg1.on("close", () => {
+        if (!arg02.destroyed) {
+          arg02.destroy();
         }
       });
     } else {
@@ -209,6 +218,10 @@ function proxyToCodeium(arg0, arg1, arg2, arg3, tmp4 = {}) {
   });
   tmp13.on("error", arg02 => {
     console.error("  [#" + arg3 + "] ✗ upstream: " + arg02.message);
+    if (tmp8) {
+      writeConnectStreamErrorHttp1(arg1, "unavailable", "Upstream error: " + arg02.message);
+      return;
+    }
     if (!arg1.headersSent) {
       arg1.writeHead(502);
     }
@@ -220,25 +233,13 @@ function proxyToCodeium(arg0, arg1, arg2, arg3, tmp4 = {}) {
 }
 function routeRequest(arg0, arg1, arg2, arg3, tmp4 = "") {
   const tmp5 = getRpcMethod(arg0.url);
-  if (tmp5 === "GetChatMessage") {
-    console.log("[" + now() + "] #" + arg3 + " ⚡ " + tmp4 + "GetChatMessage → API (" + arg2.length + "b)");
+  if (tmp5 === "GetChatMessage" && shouldInterceptByokChat(arg2, arg0.headers)) {
+    console.log("[" + now() + "] #" + arg3 + " ⚡ " + tmp4 + "GetChatMessage → BYOK (" + arg2.length + "b)");
     safeHandle(() => handleGetChatMessage(arg0, arg1, arg2), arg0, arg1, arg3, "Chat");
     return true;
   }
-  if (tmp5 === "GetWebSearchResults") {
-    console.log("[" + now() + "] #" + arg3 + " 🔍 " + tmp4 + "GetWebSearchResults (" + arg2.length + "b)");
-    safeHandle(() => handleGetWebSearchResults(arg0, arg1, arg2), arg0, arg1, arg3, "WebSearch");
-    return true;
-  }
-  if (tmp5 === "GetWebSearchRedirect") {
-    console.log("[" + now() + "] #" + arg3 + " 🔍 " + tmp4 + "GetWebSearchRedirect (" + arg2.length + "b)");
-    safeHandle(() => handleGetWebSearchRedirect(arg0, arg1, arg2), arg0, arg1, arg3, "WebRedirect");
-    return true;
-  }
-  if (tmp5 === "GetEmbeddings") {
-    console.log("[" + now() + "] #" + arg3 + " 🧮 " + tmp4 + "GetEmbeddings (" + arg2.length + "b)");
-    safeHandle(() => handleGetEmbeddings(arg0, arg1, arg2), arg0, arg1, arg3, "Embeddings");
-    return true;
+  if (tmp5 === "GetChatMessage") {
+    console.log("[" + now() + "] #" + arg3 + " ↪ " + tmp4 + "GetChatMessage → Codeium (" + arg2.length + "b)");
   }
   return false;
 }
@@ -451,8 +452,8 @@ function printHybridReady() {
   console.log("   Bind hosts: " + tmp02.join(", "));
   console.log("\n   MODE: MITM CONNECT (normal Devin Desktop, full features)");
   console.log("\n   MITM → " + REAL_API_HOST + ":443");
-  console.log("     GetChatMessage  → Anthropic API (your models, your key)");
-  console.log("     Everything else → real Codeium (trial account)");
+  console.log("     GetChatMessage (BYOK models) → your API key / gateway");
+  console.log("     Everything else            → real Codeium (trial account)");
   console.log("\n   PASSTHROUGH (blind TCP pipe):");
   console.log("     All other CONNECT targets (login, telemetry, marketplace)");
   console.log("\n   Settings needed:");

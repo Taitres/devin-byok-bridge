@@ -1,3 +1,6 @@
+import { parseFields, getField } from "../proto.js";
+import { unwrapRequest } from "../connect.js";
+
 export const BYOK_SLOT_BY_REQUEST = {
   MODEL_CLAUDE_4_OPUS_BYOK: 1,
   MODEL_CLAUDE_4_OPUS_THINKING_BYOK: 2
@@ -6,6 +9,21 @@ export const BYOK_SLOT_BY_REQUEST = {
 export function getByokSlot(requestedModel) {
   const id = String(requestedModel || "").trim();
   return BYOK_SLOT_BY_REQUEST[id] || null;
+}
+
+export function peekRequestedModel(body, headers = {}) {
+  try {
+    const tmp2 = unwrapRequest(body, headers);
+    const tmp3 = parseFields(tmp2);
+    const tmp8 = getField(tmp3, 21, 2);
+    return tmp8 ? tmp8.value.toString("utf8").trim() : "";
+  } catch {
+    return "";
+  }
+}
+
+export function shouldInterceptByokChat(body, headers = {}) {
+  return getByokSlot(peekRequestedModel(body, headers)) !== null;
 }
 
 export function slotEnvPrefix(slot) {
