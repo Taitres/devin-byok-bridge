@@ -174,7 +174,7 @@
     gpt: [["", "关闭 · 不启用 reasoning"], ["low", "低 · reasoning.effort=low"], ["medium", "中 · reasoning.effort=medium"], ["high", "高 · reasoning.effort=high"], ["xhigh", "极高 · reasoning.effort=xhigh"]],
     gemini: [["", "默认 · medium（API 默认，不覆盖）"], ["minimal", "Minimal · 最低思考 / 最低延迟"], ["low", "Low · 速度优先"], ["medium", "Medium · 推荐平衡"], ["high", "High · 最深推理"]]
   };
-  const tmp21 = new Set(["cfgByok1Host", "cfgByok1Key", "cfgByok1Model", "cfgByok1ThinkingEffort", "cfgByok2Host", "cfgByok2Key", "cfgByok2Model", "cfgByok2ThinkingEffort", "cfgHybridPort", "cfgInferencePort", "cfgAnthropicPath", "cfgOpenaiPath", "cfgMaxTokens", "cfgCompletionTimeoutMs"]);
+  const tmp21 = new Set(["cfgByok1Host", "cfgByok1Key", "cfgByok1Model", "cfgByok1ThinkingEffort", "cfgByok2Host", "cfgByok2Key", "cfgByok2Model", "cfgByok2ThinkingEffort", "cfgHybridPort", "cfgInferencePort", "cfgAnthropicPath", "cfgOpenaiPath", "cfgMaxTokens", "cfgCompletionTimeoutMs", "cfgSysPromptOverride", "cfgSysPromptPath"]);
   let tmp22 = null;
   function fn20a(arg0) {
     return !!(arg0 && arg0.id && tmp21.has(arg0.id));
@@ -320,8 +320,20 @@
       fn13("cfgAnthropicPath", arg0.BYOK1_ANTHROPIC_API_PATH || arg0.ANTHROPIC_API_PATH || "");
       fn13("cfgOpenaiPath", arg0.BYOK1_OPENAI_API_PATH || arg0.OPENAI_API_PATH || "");
       fn13("cfgMaxTokens", arg0.MAX_TOKENS || "16384");
-      fn13("cfgSysPromptOverride", arg0.SYSTEM_PROMPT_OVERRIDE === "true" ? "true" : "");
-      fn13("cfgSysPromptPath", arg0.SYSTEM_PROMPT_PATH || "");
+      fn13("cfgSysPromptOverride", arg0.SYSTEM_PROMPT_OVERRIDE === "true" || arg0.systemPromptOverride === true ? "true" : "false");
+      const tmp10 = arg0.SYSTEM_PROMPT_PATH || arg0.systemPromptPath || (fn4("cfgSysPromptPath") || {}).value || "";
+      fn13("cfgSysPromptPath", tmp10);
+      const tmp11 = fn4("promptStatusBadge");
+      const tmp12 = arg0.SYSTEM_PROMPT_OVERRIDE === "true" || arg0.systemPromptOverride === true;
+      if (tmp11) {
+        tmp11.classList.toggle("badge-ok", tmp12);
+        tmp11.classList.toggle("badge-warn", !tmp12);
+        tmp11.textContent = tmp12 ? "已启用" : "未启用";
+      }
+      const tmp13 = fn4("promptPathLabel");
+      if (tmp13) {
+        tmp13.innerHTML = "<b>提示词文件</b> " + fn6(tmp10);
+      }
       fn3();
     }
     if (arg1) {
@@ -544,10 +556,10 @@
       COMPLETION_TIMEOUT_MS: (fn4("cfgCompletionTimeoutMs") || {}).value || "12000",
       HYBRID_PORT: (fn4("cfgHybridPort") || {}).value || "3006",
       INFERENCE_PORT: (fn4("cfgInferencePort") || {}).value || "3001",
-      SYSTEM_PROMPT_OVERRIDE: (fn4("cfgSysPromptOverride") || {}).value || "",
-      SYSTEM_PROMPT_PATH: (fn4("cfgSysPromptPath") || {}).value || "",
       OPENAI_REASONING_EFFORT: tmp02.BYOK1_THINKING_EFFORT || "",
-      OPENAI_THINKING_ENABLED: tmp02.BYOK1_THINKING_EFFORT ? "true" : ""
+      OPENAI_THINKING_ENABLED: tmp02.BYOK1_THINKING_EFFORT ? "true" : "",
+      SYSTEM_PROMPT_OVERRIDE: (fn4("cfgSysPromptOverride") || {}).value === "true" ? "true" : "false",
+      SYSTEM_PROMPT_PATH: (fn4("cfgSysPromptPath") || {}).value || ""
     };
   }
   function fn28(arg0) {
@@ -727,7 +739,7 @@
       tmp32.textContent = String(arg0.requestCount || 0);
     }
     if (tmp4) {
-      const tmp02 = (arg0.running ? "<button type=\"button\" class=\"btn btn-d\" data-ws-action=\"stopProxy\">停止代理</button>" : "<button type=\"button\" class=\"btn btn-p\" data-ws-action=\"startProxy\" data-ws-mode=\"both\">一键启动</button>") + "<button type=\"button\" class=\"btn btn-s sm\" data-ws-action=\"maintenanceTools\">维护工具</button>";
+      const tmp02 = arg0.running ? "<button type=\"button\" class=\"btn btn-d\" data-ws-action=\"stopProxy\">停止代理</button>" : "<button type=\"button\" class=\"btn btn-p\" data-ws-action=\"startProxy\" data-ws-mode=\"both\">一键启动</button>";
       if (tmp4.innerHTML !== tmp02) {
         tmp4.innerHTML = tmp02;
       }
@@ -741,6 +753,30 @@
     }
     const tmp32 = tmp22.classList.toggle("hidden");
     arg0.classList.toggle("collapsed", tmp32);
+  }
+  function fn37() {
+    const tmp12 = fn4("logBox");
+    if (!tmp12) {
+      return;
+    }
+    const tmp22 = Number(tmp3.logBoxHeight || 0);
+    if (Number.isFinite(tmp22) && tmp22 >= 80) {
+      tmp12.style.height = Math.min(tmp22, Math.max(80, Math.floor(window.innerHeight * 0.7))) + "px";
+    }
+    let tmp32 = 0;
+    const tmp4 = () => {
+      clearTimeout(tmp32);
+      tmp32 = setTimeout(() => {
+        const tmp02 = Math.round(tmp12.getBoundingClientRect().height || 0);
+        if (tmp02 >= 80) {
+          tmp3.logBoxHeight = tmp02;
+          tmp0.setState(tmp3);
+        }
+      }, 150);
+    };
+    tmp12.addEventListener("mouseup", tmp4);
+    tmp12.addEventListener("touchend", tmp4);
+    tmp12.addEventListener("keyup", tmp4);
   }
   function switchTab(tabId) {
     document.querySelectorAll(".tab-btn").forEach(btn => {
@@ -781,9 +817,6 @@
     } else if (tmp32 === "stopProxy") {
       fn7("proxy", "busy", "正在停止代理...");
       fn5("stopProxy");
-    } else if (tmp32 === "maintenanceTools") {
-      fn7("config", "busy", "请选择维护操作...");
-      fn5("maintenanceTools");
     } else if (tmp32 === "clearCache") {
       fn7("config", "busy", "准备清理缓存...");
       fn5("clearCache");
@@ -834,13 +867,21 @@
         baseUrl: tmp23
       };
       fn5("fetchModels", tmp33);
-    } else if (tmp32 === "openPromptTemplates") {
+    } else if (tmp32 === "promptTemplates") {
       fn7("config", "busy", "请选择提示词模板...");
-      fn5("openPromptTemplates");
-    } else if (tmp32 === "openSystemPrompt") {
-      fn7("config", "busy", "正在启用并打开自定义提示词...");
-      fn5("openSystemPrompt", {
-        path: (fn4("cfgSysPromptPath") || {}).value || ""
+      fn5("openPromptTemplatePicker", {
+        config: fn27()
+      });
+    } else if (tmp32 === "customPrompt") {
+      fn7("config", "busy", "正在打开自定义提示词...");
+      fn5("openSystemPromptEditor", {
+        config: fn27()
+      });
+    } else if (tmp32 === "disablePromptOverride") {
+      fn13("cfgSysPromptOverride", "false");
+      fn7("config", "busy", "正在关闭提示词覆盖...");
+      fn5("disableSystemPromptOverride", {
+        config: fn27()
       });
     } else if (tmp32 === "applyPatch") {
       fn7("patch", "busy", "正在应用补丁...");
@@ -1064,6 +1105,7 @@
     }
   });
   fn24a();
+  fn37();
   fn5("getStatus");
   [1, 2].forEach(arg0 => {
     const tmp12 = fn();

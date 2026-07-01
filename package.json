@@ -2,7 +2,7 @@
   "name": "devin-byok-bridge",
   "displayName": "Devin BYOK Bridge",
   "description": "Devin Desktop BYOK 桥接 — 本地 API Key，多模型路由（兼容旧版 Windsurf）",
-  "version": "2.1.0",
+  "version": "2.3.0",
   "publisher": "ycx932436",
   "license": "MIT",
   "scripts": {

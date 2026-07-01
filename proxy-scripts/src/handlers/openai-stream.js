@@ -2,6 +2,7 @@ import { emitAIText, emitToolCall, emitChatEnd } from "../ws-bridge.js";
 import { buildTextDelta, buildThinkingDelta, buildToolCallDelta, buildStopChunk, buildErrorChunk, STOP_REASON } from "./build-response.js";
 import { MAX_TOOL_MARKER_LOOKBEHIND, findToolCallStartIndex, parseTextToolCalls } from "./tool-call-parser.js";
 import { normalizeToolInvocation } from "./tool-normalization.js";
+import { extractChatCompletionsUsage, extractOpenAIResponsesUsage, mergeUsage } from "./usage-log.js";
 export function parseOpenAISSEChunk(arg0) {
   const tmp1 = [];
   const tmp2 = arg0.split("\n");
@@ -46,6 +47,10 @@ export class OpenAIStreamProcessor {
     this._capturedToolText = "";
     this._errorMessage = null;
     this._allowedTools = null;
+    this._usage = null;
+  }
+  getUsage() {
+    return this._usage;
   }
   setAllowedTools(tmp0) {
     this._allowedTools = new Set(tmp0);
@@ -119,6 +124,7 @@ export class OpenAIStreamProcessor {
       case "response.completed":
         {
           const tmp02 = tmp2.response;
+          this._usage = mergeUsage(this._usage, extractOpenAIResponsesUsage(tmp0));
           if (tmp02?.status === "completed") {
             this._stopReason = "stop";
             const tmp03 = tmp02.output?.some(arg0 => arg0.type === "function_call");
@@ -337,6 +343,10 @@ export class ChatCompletionsStreamProcessor {
     this._capturedToolText = "";
     this._errorMessage = null;
     this._allowedTools = null;
+    this._usage = null;
+  }
+  getUsage() {
+    return this._usage;
   }
   setAllowedTools(tmp0) {
     this._allowedTools = new Set(tmp0);
@@ -352,6 +362,9 @@ export class ChatCompletionsStreamProcessor {
       return this._onDone();
     }
     const tmp1 = tmp0.data;
+    if (tmp1?.usage) {
+      this._usage = mergeUsage(this._usage, extractChatCompletionsUsage(tmp1));
+    }
     const tmp2 = tmp1?.choices?.[0];
     if (!tmp2) {
       if (tmp1?.error?.message) {

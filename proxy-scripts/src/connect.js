@@ -1,4 +1,5 @@
 import tmp0 from "node:zlib";
+import { buildErrorChunk } from "./handlers/build-response.js";
 export function gzipSync(arg0) {
   return tmp0.gzipSync(arg0);
 }
@@ -76,4 +77,50 @@ export function streamHeaders() {
     "connect-content-encoding": "gzip",
     "transfer-encoding": "chunked"
   };
+}
+
+export function streamHeadersHttp2() {
+  return {
+    "content-type": "application/connect+proto",
+    "connect-content-encoding": "gzip"
+  };
+}
+
+export const PASSTHROUGH_HOP_HEADERS = new Set(["connection", "keep-alive", "proxy-authenticate", "proxy-authorization", "te", "trailer", "transfer-encoding", "upgrade"]);
+
+export function sanitizeUpstreamResponseHeaders(arg0, arg1 = false) {
+  const tmp2 = {};
+  for (const [tmp02, tmp1] of Object.entries(arg0 || {})) {
+    const tmp03 = tmp02.toLowerCase();
+    if (PASSTHROUGH_HOP_HEADERS.has(tmp03)) {
+      continue;
+    }
+    if (arg1 && tmp03 === "content-length") {
+      continue;
+    }
+    tmp2[tmp02] = tmp1;
+  }
+  return tmp2;
+}
+
+export function writeConnectStreamErrorHttp1(arg0, arg1, arg2) {
+  if (arg0.headersSent || arg0.writableEnded) {
+    return;
+  }
+  arg0.writeHead(200, streamHeaders());
+  arg0.write(wrapEnvelope(buildErrorChunk(arg1, arg2)));
+  arg0.write(endOfStreamEnvelope());
+  arg0.end();
+}
+
+export function writeConnectStreamErrorHttp2(arg0, arg1, arg2, arg3) {
+  if (arg0.destroyed) {
+    return;
+  }
+  try {
+    arg0.respond(arg3(200, streamHeadersHttp2()));
+    arg0.write(wrapEnvelope(buildErrorChunk(arg1, arg2)));
+    arg0.write(endOfStreamEnvelope());
+    arg0.end();
+  } catch {}
 }

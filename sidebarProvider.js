@@ -15,6 +15,7 @@ try {
       showErrorMessage: () => undefined,
       showQuickPick: () => undefined,
       showOpenDialog: () => undefined,
+      showTextDocument: () => undefined,
       createStatusBarItem: () => ({
         text: "",
         tooltip: "",
@@ -57,39 +58,6 @@ const KEY_AUTO_START_PROXY = "devin-byok-bridge.autoStartProxy";
 const LEGACY_KEY_AUTO_START_PROXY = "windsurf-byok-bridge.autoStartProxy";
 const KEY_PATCH_EXTENSION_PATH = "devin-byok-bridge.patchExtensionPath";
 const LEGACY_KEY_PATCH_EXTENSION_PATH = "windsurf-byok-bridge.patchExtensionPath";
-const DEFAULT_SYSTEM_PROMPT = ["You are Devin Local, Devin Desktop's software engineering assistant.", "Help the user solve coding tasks through implementation, debugging, code review, and repository-aware reasoning.", "Prioritize correctness, low-risk changes, and forward progress."].join("\n");
-const tmp0 = {
-  id: "default",
-  label: "默认工程助手",
-  description: "通用编码、调试、代码审查",
-  content: DEFAULT_SYSTEM_PROMPT
-};
-const BUILT_IN_PROMPT_TEMPLATES = [tmp0, {
-  id: "code-review",
-  label: "代码审查增强",
-  description: "优先发现逻辑风险、配置污染和回归点",
-  content: [DEFAULT_SYSTEM_PROMPT, "", "Focus on code review before making changes.", "Identify root causes, config pollution, runtime mapping mistakes, compatibility risks, and regression paths.", "Prefer small, low-risk fixes and verify behavior with compile or targeted tests.", "When reporting findings, clearly separate confirmed issues from hypotheses."].join("\n")
-}, {
-  id: "slow-request",
-  label: "慢请求诊断",
-  description: "定位代理、模型加载、上游首包和网络耗时",
-  content: [DEFAULT_SYSTEM_PROMPT, "", "When debugging slow requests, map the full request path first.", "Separate local proxy delay from upstream/network/model first-token latency using timing logs.", "Check model loading, runtime hot reload, provider host/key mapping, cache invalidation, and request forwarding.", "Avoid masking latency symptoms; fix wrong routing or config causes first."].join("\n")
-}, {
-  id: "frontend-ui",
-  label: "前端 UI 实现",
-  description: "侧重交互、布局、状态反馈和可用性",
-  content: [DEFAULT_SYSTEM_PROMPT, "", "When building UI, prioritize clarity, responsive layout, accessible controls, and immediate state feedback.", "Keep user flows simple, avoid surprising destructive actions, and preserve existing styling conventions.", "Verify UI data flow from controls to persisted config and runtime behavior."].join("\n")
-}, {
-  id: "backend-debug",
-  label: "后端接口调试",
-  description: "侧重接口链路、错误处理和运行时状态",
-  content: [DEFAULT_SYSTEM_PROMPT, "", "When debugging backend or proxy code, trace inputs, normalized config, runtime config, network calls, and error propagation.", "Add or use targeted diagnostics instead of guessing.", "Prefer fixes that address the authoritative state and all relevant call sites."].join("\n")
-}, {
-  id: "zh-concise",
-  label: "中文简洁模式",
-  description: "中文回复，直接给结论和执行结果",
-  content: [DEFAULT_SYSTEM_PROMPT, "", "Respond in Chinese unless the user asks otherwise.", "Be concise and direct. Start with the conclusion, then list actions and verification results.", "Use short Markdown sections and avoid unnecessary background explanation."].join("\n")
-}];
 const DIAGNOSTIC_OPENAI_PREFIXES = ["gpt-", "MODEL_GPT"];
 const DIAGNOSTIC_MODEL_MAP = {
   "gpt-5-4-low": "gpt-5.4",
@@ -122,6 +90,32 @@ const DIAGNOSTIC_MODEL_MAP = {
   MODEL_GOOGLE_GEMINI_2_5_PRO: "__DEFAULT__",
   MODEL_CHAT: "__DEFAULT__"
 };
+const DEFAULT_SYSTEM_PROMPT = [
+  "You are Devin Local, a careful software engineering assistant.",
+  "Prioritize correctness, small safe changes, and clear status updates.",
+  "Follow the user's repository conventions and avoid unrelated edits."
+].join("\n");
+const BUILT_IN_PROMPT_TEMPLATES = [{
+  label: "默认工程助手",
+  description: "稳妥实现、最小改动",
+  content: DEFAULT_SYSTEM_PROMPT
+}, {
+  label: "中文代码助手",
+  description: "中文沟通，保持代码标识原文",
+  content: [
+    "你是 Devin Local，一名谨慎的软件工程助手。",
+    "请使用中文回复；代码、路径、命令、API 名称保持原文。",
+    "优先做最小安全改动，先验证仓库事实，再给出结论。"
+  ].join("\n")
+}, {
+  label: "调试优先",
+  description: "先定位根因，再改代码",
+  content: [
+    "You are Devin Local, focused on debugging production issues.",
+    "Identify the root cause before changing code, prefer targeted logging/tests, and avoid speculative rewrites.",
+    "When uncertain, state the uncertainty and collect more evidence."
+  ].join("\n")
+}];
 function getWebviewNonce() {
   let tmp02 = "";
   const tmp1 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -1040,8 +1034,6 @@ class SidebarProvider {
     tmp02.push(this.checkInlineFastTimeoutRisk(tmp3));
     tmp02.push(await this.checkWindsurfProcessRouting(tmp3));
     tmp02.push(await this.checkGatewayModelCatalog(tmp3));
-    const tmp21 = this.proxyManager.getDefaultSystemPromptFilePath();
-    tmp02.push(this.envCheckItem("system-prompt", "默认提示词", fs.existsSync(tmp21) ? "ok" : "warning", fs.existsSync(tmp21) ? tmp21 : "缺少默认 system-prompt.md", !fs.existsSync(tmp21)));
     const tmp22 = this.getPatchStatus();
     const tmp23 = tmp22.patches.filter(arg0 => arg0.status !== "applied");
     const tmp24 = !!tmp22.path && tmp23.length > 0;
@@ -1286,13 +1278,6 @@ class SidebarProvider {
       tmp2.COMPLETION_TIMEOUT_MS = "12000";
     }
     this.proxyManager.writeEnvConfig(tmp2);
-    const tmp3 = this.proxyManager.getDefaultSystemPromptFilePath();
-    if (!fs.existsSync(tmp3)) {
-      fs.mkdirSync(path.dirname(tmp3), {
-        recursive: true
-      });
-      fs.writeFileSync(tmp3, DEFAULT_SYSTEM_PROMPT.trim() + "\n", "utf-8");
-    }
     const tmp4 = this.proxyManager.getStatus();
     const tmp5 = this.getPatchStatus();
     if (tmp5.path && tmp5.patches.some(arg0 => arg0.status !== "applied")) {
@@ -1308,6 +1293,112 @@ class SidebarProvider {
       message: tmp2
     };
     this.view?.webview.postMessage(tmp3);
+  }
+  getSystemPromptTargetPath(tmp02 = this.proxyManager.readEnvConfig()) {
+    if (typeof this.proxyManager.getResolvedSystemPromptPath === "function") {
+      return this.proxyManager.getResolvedSystemPromptPath(tmp02);
+    }
+    const tmp1 = String(tmp02.SYSTEM_PROMPT_PATH || "").trim();
+    if (tmp1) {
+      return path.isAbsolute(tmp1) ? tmp1 : path.resolve(this.context.extensionPath, "proxy-scripts", tmp1);
+    }
+    if (typeof this.proxyManager.getDefaultSystemPromptFilePath === "function") {
+      return this.proxyManager.getDefaultSystemPromptFilePath();
+    }
+    return path.join(this.context.extensionPath, "proxy-scripts", "prompts", "system-prompt.md");
+  }
+  ensureSystemPromptFile(tmp02, tmp1 = DEFAULT_SYSTEM_PROMPT) {
+    const tmp2 = this.getSystemPromptTargetPath(tmp02);
+    fs.mkdirSync(path.dirname(tmp2), {
+      recursive: true
+    });
+    if (!fs.existsSync(tmp2) || !fs.readFileSync(tmp2, "utf-8").trim()) {
+      fs.writeFileSync(tmp2, String(tmp1 || DEFAULT_SYSTEM_PROMPT).trim() + "\n", "utf-8");
+    }
+    return tmp2;
+  }
+  async hotReloadSystemPromptConfig(tmp02, tmp1) {
+    const tmp2 = this.writeModeScopedConfig(tmp02);
+    const tmp3 = this.proxyManager.getStatus();
+    let tmp4 = tmp1 || "提示词配置已保存";
+    let tmp5 = false;
+    if (tmp3.running) {
+      const tmp6 = await this.proxyManager.reloadRuntimeConfig(this.getRuntimeConfigForCurrentMode(tmp2), {
+        hybridPort: tmp3.hybridPort,
+        inferencePort: tmp3.inferencePort
+      });
+      if (tmp6.ok) {
+        tmp4 += "，已热更新到运行中的代理";
+      } else {
+        tmp5 = true;
+        tmp4 += "；保存成功但热更新失败：" + (tmp6.errors.join("；") || "未知错误");
+      }
+    } else {
+      tmp4 += "；代理未运行，下次启动生效";
+    }
+    this.postActionState("config", tmp5 ? "error" : "success", tmp4);
+    this.refresh();
+    return {
+      ok: !tmp5,
+      message: tmp4
+    };
+  }
+  async applySystemPromptContent(tmp02, tmp1, tmp2 = {}) {
+    const tmp3 = {
+      ...this.proxyManager.readEnvConfig(),
+      ...(tmp2 && typeof tmp2 === "object" ? tmp2 : {})
+    };
+    const tmp4 = this.getSystemPromptTargetPath(tmp3);
+    fs.mkdirSync(path.dirname(tmp4), {
+      recursive: true
+    });
+    fs.writeFileSync(tmp4, String(tmp02 || DEFAULT_SYSTEM_PROMPT).trim() + "\n", "utf-8");
+    await this.hotReloadSystemPromptConfig({
+      ...tmp3,
+      SYSTEM_PROMPT_OVERRIDE: "true",
+      SYSTEM_PROMPT_PATH: tmp4
+    }, tmp1 || "提示词覆盖已启用");
+  }
+  async openPromptTemplatePicker(tmp02 = {}) {
+    const tmp1 = await vscode.window.showQuickPick(BUILT_IN_PROMPT_TEMPLATES.map(arg0 => ({
+      label: arg0.label,
+      description: arg0.description,
+      template: arg0
+    })), {
+      placeHolder: "选择系统提示词模板"
+    });
+    if (!tmp1) {
+      this.postActionState("config", "success", "已取消选择提示词模板");
+      return;
+    }
+    await this.applySystemPromptContent(tmp1.template.content, "已应用提示词模板：" + tmp1.template.label, tmp02);
+  }
+  async openSystemPromptEditor(tmp02 = {}) {
+    const tmp1 = {
+      ...this.proxyManager.readEnvConfig(),
+      ...(tmp02 && typeof tmp02 === "object" ? tmp02 : {})
+    };
+    const tmp2 = this.ensureSystemPromptFile(tmp1);
+    await this.hotReloadSystemPromptConfig({
+      ...tmp1,
+      SYSTEM_PROMPT_OVERRIDE: "true",
+      SYSTEM_PROMPT_PATH: tmp2
+    }, "自定义提示词已启用；保存文件后会被代理热读取");
+    const tmp3 = await vscode.workspace.openTextDocument(tmp2);
+    await vscode.window.showTextDocument(tmp3, {
+      preview: false
+    });
+  }
+  async disableSystemPromptOverride(tmp02 = {}) {
+    const tmp1 = {
+      ...this.proxyManager.readEnvConfig(),
+      ...(tmp02 && typeof tmp02 === "object" ? tmp02 : {})
+    };
+    await this.hotReloadSystemPromptConfig({
+      ...tmp1,
+      SYSTEM_PROMPT_OVERRIDE: "false",
+      SYSTEM_PROMPT_PATH: this.getSystemPromptTargetPath(tmp1)
+    }, "提示词覆盖已关闭");
   }
   async ensurePatchAppliedAfterProxyStart(tmp02 = true) {
     const tmp1 = this.getPatchStatus();
@@ -1427,192 +1518,6 @@ class SidebarProvider {
     this.runDetachedCacheCleaner(tmp1);
     this.postActionState("config", "success", "安全清理缓存脚本已启动，历史记录会保留，Devin Desktop 即将关闭");
   }
-  async openMaintenanceTools() {
-    const tmp02 = await vscode.window.showQuickPick([{
-      label: "提示词模板",
-      description: "选择内置模板或自定义系统提示词",
-      action: "promptTemplates"
-    }, {
-      label: "环境检测",
-      description: "检查代理、补丁、运行环境",
-      action: "checkEnvironment"
-    }, {
-      label: "强制重启 LS",
-      description: "结束 Codeium/language_server 子进程",
-      action: "restartLs"
-    }, {
-      label: "安全清理缓存",
-      description: "只清理缓存，保留历史记录和工作区数据",
-      action: "clearCache"
-    }, {
-      label: "导出诊断",
-      description: "复制并打开诊断报告",
-      action: "exportDiagnostics"
-    }], {
-      placeHolder: "选择维护操作"
-    });
-    if (!tmp02) {
-      this.postActionState("config", "success", "已取消维护操作");
-      return;
-    }
-    if (tmp02.action === "promptTemplates") {
-      await this.openPromptTemplatePicker();
-      return;
-    }
-    if (tmp02.action === "checkEnvironment") {
-      const tmp03 = await this.checkManagedEnvironment();
-      const tmp1 = {
-        type: "environmentCheck",
-        result: tmp03
-      };
-      this.view?.webview.postMessage(tmp1);
-      this.postActionState("config", tmp03.ok ? "success" : "error", tmp03.ok ? "环境检测通过" : "检测到异常项");
-      return;
-    }
-    if (tmp02.action === "restartLs") {
-      const tmp03 = await this.forceRestartLanguageServer();
-      this.postActionState("config", tmp03.restarted > 0 ? "success" : "error", tmp03.message);
-      return;
-    }
-    if (tmp02.action === "clearCache") {
-      await this.clearWindsurfCache();
-      return;
-    }
-    await this.exportDiagnosticReport();
-    this.postActionState("config", "success", "诊断报告已复制并打开");
-  }
-  getSystemPromptTargetPath(tmp02, tmp1) {
-    const tmp2 = {
-      ...tmp02
-    };
-    const tmp3 = tmp2;
-    if (typeof tmp1 === "string") {
-      tmp3.SYSTEM_PROMPT_PATH = tmp1.trim() || "./prompts/system-prompt.md";
-    }
-    return this.proxyManager.getResolvedSystemPromptPath(tmp3);
-  }
-  async restartProxyForPromptConfigIfRunning() {
-    const tmp02 = this.proxyManager.getStatus();
-    if (!tmp02.running) {
-      return false;
-    }
-    const tmp1 = await vscode.window.showInformationMessage("提示词配置已更新，需要重启代理后生效。是否立即重启？", "立即重启", "稍后手动重启");
-    if (tmp1 !== "立即重启") {
-      return false;
-    }
-    this.proxyManager.stop();
-    await new Promise(arg0 => setTimeout(arg0, 500));
-    const tmp2 = await this.proxyManager.start("both", this.getRuntimeConfigForCurrentMode());
-    this.postActionState("proxy", tmp2 ? "success" : "error", tmp2 ? "代理已重启，提示词已生效" : this.proxyManager.getLastStartError() || "代理重启失败");
-    return tmp2;
-  }
-  async applySystemPromptContent(tmp02, tmp1, tmp2) {
-    const tmp3 = this.proxyManager.readEnvConfig();
-    const tmp4 = tmp2?.trim() || "./prompts/system-prompt.md";
-    const tmp5 = this.getSystemPromptTargetPath(tmp3, tmp4);
-    if (fs.existsSync(tmp5)) {
-      const tmp03 = fs.readFileSync(tmp5, "utf-8").trim();
-      if (tmp03 && tmp03 !== tmp02.trim()) {
-        const tmp04 = await vscode.window.showWarningMessage("将覆盖当前提示词文件：" + tmp5, {
-          modal: true
-        }, "覆盖");
-        if (tmp04 !== "覆盖") {
-          this.postActionState("config", "success", "已取消应用提示词模板");
-          return;
-        }
-      }
-    }
-    fs.mkdirSync(path.dirname(tmp5), {
-      recursive: true
-    });
-    fs.writeFileSync(tmp5, tmp02.trim() + "\n", "utf-8");
-    const tmp6 = {
-      ...tmp3
-    };
-    tmp6.SYSTEM_PROMPT_OVERRIDE = "true";
-    tmp6.SYSTEM_PROMPT_PATH = tmp4;
-    const tmp7 = tmp6;
-    this.proxyManager.writeEnvConfig(tmp7);
-    this.postActionState("config", "success", "已应用提示词：" + tmp1);
-    await this.restartProxyForPromptConfigIfRunning();
-    this.refresh();
-  }
-  async openPromptTemplatePicker() {
-    const tmp02 = {
-      label: "自定义提示词",
-      description: "打开并编辑 system-prompt.md",
-      action: "custom"
-    };
-    const tmp1 = {
-      label: "关闭提示词覆盖",
-      description: "恢复使用 Devin Desktop 原始系统提示词",
-      action: "disable"
-    };
-    const tmp2 = [...BUILT_IN_PROMPT_TEMPLATES.map(arg0 => ({
-      label: arg0.label,
-      description: arg0.description,
-      action: "template",
-      template: arg0
-    })), tmp02, tmp1];
-    const tmp3 = await vscode.window.showQuickPick(tmp2, {
-      placeHolder: "选择内置提示词模板，或打开自定义提示词文件"
-    });
-    if (!tmp3) {
-      this.postActionState("config", "success", "已取消提示词操作");
-      return;
-    }
-    if (tmp3.action === "custom") {
-      const tmp03 = this.proxyManager.readEnvConfig();
-      const tmp12 = {
-        ...tmp03
-      };
-      tmp12.SYSTEM_PROMPT_OVERRIDE = "true";
-      tmp12.SYSTEM_PROMPT_PATH = tmp03.SYSTEM_PROMPT_PATH || "./prompts/system-prompt.md";
-      const tmp22 = tmp12;
-      this.proxyManager.writeEnvConfig(tmp22);
-      await this.openSystemPromptEditor(tmp22.SYSTEM_PROMPT_PATH);
-      this.postActionState("config", "success", "已启用并打开自定义提示词文件");
-      await this.restartProxyForPromptConfigIfRunning();
-      this.refresh();
-      return;
-    }
-    if (tmp3.action === "disable") {
-      const tmp03 = this.proxyManager.readEnvConfig();
-      const tmp12 = {
-        ...tmp03
-      };
-      tmp12.SYSTEM_PROMPT_OVERRIDE = "";
-      this.proxyManager.writeEnvConfig(tmp12);
-      this.postActionState("config", "success", "已关闭提示词覆盖");
-      await this.restartProxyForPromptConfigIfRunning();
-      this.refresh();
-      return;
-    }
-    await this.applySystemPromptContent(tmp3.template.content, tmp3.template.label);
-  }
-  async openSystemPromptEditor(tmp02) {
-    const tmp1 = this.proxyManager.readEnvConfig();
-    const tmp2 = this.getSystemPromptTargetPath(tmp1, tmp02);
-    if (!fs.existsSync(tmp2)) {
-      fs.mkdirSync(path.dirname(tmp2), {
-        recursive: true
-      });
-      const tmp03 = {
-        ...tmp1
-      };
-      tmp03.SYSTEM_PROMPT_PATH = "./prompts/system-prompt.md";
-      const tmp12 = this.proxyManager.getResolvedSystemPromptPath(tmp03);
-      if (fs.existsSync(tmp12) && path.normalize(tmp12) !== path.normalize(tmp2)) {
-        fs.copyFileSync(tmp12, tmp2);
-      } else {
-        fs.writeFileSync(tmp2, "", "utf-8");
-      }
-    }
-    const tmp3 = await vscode.workspace.openTextDocument(vscode.Uri.file(tmp2));
-    await vscode.window.showTextDocument(tmp3, {
-      preview: false
-    });
-  }
   async handleMessage(tmp02) {
     switch (tmp02.command) {
       case "startProxy":
@@ -1654,6 +1559,36 @@ class SidebarProvider {
           });
           break;
         }
+      case "openPromptTemplatePicker":
+        {
+          try {
+            await this.openPromptTemplatePicker(tmp02.config);
+          } catch (tmp03) {
+            const tmp1 = tmp03 instanceof Error ? tmp03.message : String(tmp03);
+            this.postActionState("config", "error", "应用提示词模板失败：" + tmp1);
+          }
+          break;
+        }
+      case "openSystemPromptEditor":
+        {
+          try {
+            await this.openSystemPromptEditor(tmp02.config);
+          } catch (tmp03) {
+            const tmp1 = tmp03 instanceof Error ? tmp03.message : String(tmp03);
+            this.postActionState("config", "error", "打开自定义提示词失败：" + tmp1);
+          }
+          break;
+        }
+      case "disableSystemPromptOverride":
+        {
+          try {
+            await this.disableSystemPromptOverride(tmp02.config);
+          } catch (tmp03) {
+            const tmp1 = tmp03 instanceof Error ? tmp03.message : String(tmp03);
+            this.postActionState("config", "error", "关闭提示词覆盖失败：" + tmp1);
+          }
+          break;
+        }
       case "reloadIdeWindow":
         {
           await (0, reloadWorkbench_1.reloadWorkbenchWindow)();
@@ -1664,50 +1599,9 @@ class SidebarProvider {
           await vscode.commands.executeCommand("workbench.action.newWindow");
           break;
         }
-      case "openPromptTemplates":
-        {
-          try {
-            await this.openPromptTemplatePicker();
-          } catch (tmp03) {
-            const tmp1 = tmp03 instanceof Error ? tmp03.message : String(tmp03);
-            this.postActionState("config", "error", "提示词操作失败：" + tmp1);
-          }
-          break;
-        }
-      case "openSystemPrompt":
-        {
-          try {
-            const tmp03 = this.proxyManager.readEnvConfig();
-            const tmp1 = typeof tmp02.path === "string" && tmp02.path.trim() ? tmp02.path.trim() : "./prompts/system-prompt.md";
-            const tmp2 = {
-              ...tmp03
-            };
-            tmp2.SYSTEM_PROMPT_OVERRIDE = "true";
-            tmp2.SYSTEM_PROMPT_PATH = tmp1;
-            this.proxyManager.writeEnvConfig(tmp2);
-            await this.openSystemPromptEditor(tmp1);
-            this.postActionState("config", "success", "已启用并打开自定义提示词文件");
-            await this.restartProxyForPromptConfigIfRunning();
-            this.refresh();
-          } catch (tmp03) {
-            const tmp1 = tmp03 instanceof Error ? tmp03.message : String(tmp03);
-            this.postActionState("config", "error", "打开提示词失败：" + tmp1);
-          }
-          break;
-        }
       case "setAutoStartProxy":
         {
           await this.context.globalState.update(KEY_AUTO_START_PROXY, tmp02.value === true);
-          break;
-        }
-      case "maintenanceTools":
-        {
-          try {
-            await this.openMaintenanceTools();
-          } catch (tmp03) {
-            const tmp1 = tmp03 instanceof Error ? tmp03.message : String(tmp03);
-            this.postActionState("config", "error", "维护操作失败：" + tmp1);
-          }
           break;
         }
       case "clearCache":
@@ -1986,8 +1880,6 @@ class SidebarProvider {
     const tmp5 = this.context.globalState.get(KEY_AUTO_START_PROXY) === true;
     const tmp6 = tmp1.path ? tmp1.path.replace(/\\/g, "/").split("/").slice(-4).join("/") : "未找到";
     const tmp7 = tmp1.patches.filter(arg0 => arg0.status === "applied").length;
-    const tmp8 = this.proxyManager.getSystemPromptConfigPath(tmp2);
-    const tmp9 = tmp2.SYSTEM_PROMPT_OVERRIDE === "true";
     const tmp10 = getWebviewNonce();
     const tmp11 = this.view?.webview.cspSource ?? "";
     const tmp12 = this.view.webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, "media", "sidebar.js"));
@@ -2014,6 +1906,9 @@ class SidebarProvider {
     const tmp33 = Object.prototype.hasOwnProperty.call(tmp2, "OPENAI_REASONING_EFFORT") ? tmp2.OPENAI_REASONING_EFFORT : "";
     const tmp34 = tmp7 === tmp1.patches.length ? "badge-ok" : "badge-warn";
     const tmp35 = tmp7 === tmp1.patches.length ? "已就绪" : "需安装";
+    const tmp37 = tmp2.SYSTEM_PROMPT_OVERRIDE === "true" ? "true" : "false";
+    const tmp38 = this.getSystemPromptTargetPath(tmp2);
+    const tmp39 = tmp37 === "true";
     const tmp36 = this.logLines.length === 0 ? "<div class=\"log-line dim\">等待日志...</div>" : this.logLines.slice(-30).map(arg0 => {
       const tmp110 = /→.*GetChatMessage|GetStreamingCompletions|GetEmbeddings/.test(arg0) ? " hi" : /err|stderr/i.test(arg0) ? " err" : "";
       return "<div class=\"log-line" + tmp110 + "\">" + esc(arg0) + "</div>";
@@ -2346,8 +2241,11 @@ input:focus, select:focus {
   border: 1px solid ${tmp21};
   border-radius: 6px;
   padding: 8px;
-  max-height: 160px;
-  overflow-y: auto;
+  height: 180px;
+  min-height: 80px;
+  max-height: min(70vh, 560px);
+  resize: vertical;
+  overflow: auto;
   font-family: ${tmp24};
   font-size: 10px;
   line-height: 1.5;
@@ -2998,8 +2896,8 @@ select option {
     <input type="hidden" id="cfgOpenaiPath" value="${esc(tmp2.OPENAI_API_PATH || "/v1/responses")}">
     <input type="hidden" id="cfgMaxTokens" value="${esc(tmp2.MAX_TOKENS || "16384")}">
     <input type="hidden" id="cfgCompletionTimeoutMs" value="${esc(tmp2.COMPLETION_TIMEOUT_MS || "12000")}">
-    <input type="hidden" id="cfgSysPromptOverride" value="${tmp9 ? "true" : ""}">
-    <input type="hidden" id="cfgSysPromptPath" value="${esc(tmp8)}">
+    <input type="hidden" id="cfgSysPromptOverride" value="${tmp37}">
+    <input type="hidden" id="cfgSysPromptPath" value="${esc(tmp38)}">
     <input type="hidden" id="cfgDefaultModelCustom" value="">
     <div id="environmentCheckResult" class="env-check hidden"></div>
     <div id="proxyActionState" class="action-state hidden">
@@ -3049,15 +2947,18 @@ select option {
             <div class="fg" id="cfgByok2ThinkingEffortRow"><label id="cfgByok2ThinkingLabel">${esc(thinkingEffort_1.getThinkingIntensityHint(thinkingEffort_1.detectModelProvider(tmp30)))}</label><select id="cfgByok2ThinkingEffort">${buildThinkingEffortOptions(tmp30, tmp32)}</select></div>
             <div id="modelFetchStatus2" style="font-size:10px;color:${tmp17}"></div>
         </div>
-        <div class="row between" style="margin-bottom:8px;padding:6px 8px;border:1px solid ${tmp21};border-radius:8px;background:rgba(255,255,255,.02)">
-            <div style="min-width:0">
-                <div style="font-size:10px;color:#a1a1aa;font-weight:600">提示词</div>
-                <div style="font-size:9px;color:${tmp17};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${tmp9 ? "已启用 · " + esc(tmp8) : "未启用 · 使用 Devin Desktop 原始提示词"}</div>
+        <div class="guide-block" style="margin-bottom:10px">
+            <div class="card-head between" style="margin-bottom:8px;padding:0">
+                <span>系统提示词覆盖</span>
+                <span id="promptStatusBadge" class="badge ${tmp39 ? "badge-ok" : "badge-warn"}">${tmp39 ? "已启用" : "未启用"}</span>
             </div>
-            <div class="row" style="gap:4px;flex-shrink:0">
-                <button type="button" class="btn btn-s sm" data-ws-action="openPromptTemplates" style="padding:4px 8px">模板</button>
-                <button type="button" class="btn btn-s sm" data-ws-action="openSystemPrompt" style="padding:4px 8px">自定义</button>
+            <div id="promptPathLabel" class="patch-path" style="margin-bottom:8px"><b>提示词文件</b> ${esc(tmp38)}</div>
+            <div class="btns" style="margin-bottom:8px">
+                <button type="button" class="btn btn-s sm" data-ws-action="promptTemplates">模板</button>
+                <button type="button" class="btn btn-s sm" data-ws-action="customPrompt">自定义</button>
+                <button type="button" class="btn btn-s sm" data-ws-action="disablePromptOverride">停用</button>
             </div>
+            <div class="guide-note">模板/自定义内容会写入提示词文件；运行中的代理热更新开关，提示词内容按文件变化自动读取，无需重启。</div>
         </div>
     </div>
 
@@ -3075,7 +2976,6 @@ select option {
         </div>
         <div class="btns" style="margin-bottom:12px" id="proxyControlButtons">
             ${tmp02.running ? "<button type=\"button\" class=\"btn btn-d\" data-ws-action=\"stopProxy\">停止代理</button>" : "<button type=\"button\" class=\"btn btn-p\" data-ws-action=\"startProxy\" data-ws-mode=\"both\">一键启动</button>"}
-            <button type="button" class="btn btn-s sm" data-ws-action="maintenanceTools">维护工具</button>
         </div>
         <div class="row between" style="margin-bottom:12px;padding:4px 0">
             <div class="row">
@@ -3124,7 +3024,8 @@ select option {
                 <button type="button" class="btn btn-s sm" data-ws-action="copyLogs" style="font-size:10px;padding:3px 6px">复制</button>
             </div>
             <div id="logBody">
-                <div class="log-box" id="logBox">${tmp36}</div>
+                <div class="log-box" id="logBox" title="拖动右下角可调整日志显示高度">${tmp36}</div>
+                <div class="empty-text" style="margin-top:4px">提示：拖动日志框右下角可调整上下长度。</div>
                 <div id="copyToast" style="display:none;text-align:center;color:#34d399;font-size:10px;margin-top:4px">已复制</div>
             </div>
         </div>

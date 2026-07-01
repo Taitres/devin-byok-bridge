@@ -148,16 +148,7 @@ class ProxyManager {
     fs.mkdirSync(tmp0, {
       recursive: true
     });
-    fs.mkdirSync(path.join(tmp0, "prompts"), {
-      recursive: true
-    });
     return tmp0;
-  }
-  getDefaultSystemPromptFilePath() {
-    if (this.usesPersistentUserConfig()) {
-      return path.join(this.getUserConfigDir(), "prompts", "system-prompt.md");
-    }
-    return path.join(this.proxyRoot, "prompts", "system-prompt.md");
   }
   findLegacyEnvCandidates() {
     const tmp0 = [];
@@ -194,41 +185,6 @@ class ProxyManager {
       }
     });
   }
-  findLegacySystemPromptCandidates() {
-    const tmp0 = [];
-    const tmp1 = new Set();
-    const fn = arg0 => {
-      if (!arg0 || tmp1.has(arg0)) {
-        return;
-      }
-      tmp1.add(arg0);
-      tmp0.push(arg0);
-    };
-    fn(path.join(this.proxyRoot, "prompts", "system-prompt.md"));
-    const tmp2 = this.findWorkspaceProxyRoot();
-    if (tmp2) {
-      fn(path.join(tmp2, "prompts", "system-prompt.md"));
-    }
-    try {
-      const tmp3 = path.dirname(this.context.extensionPath);
-      for (const tmp02 of fs.readdirSync(tmp3)) {
-        if (!/devin-byok-bridge|windsurf-byok-bridge/i.test(tmp02)) {
-          continue;
-        }
-        if (path.join(tmp3, tmp02) === this.context.extensionPath) {
-          continue;
-        }
-        fn(path.join(tmp3, tmp02, "proxy-scripts", "prompts", "system-prompt.md"));
-      }
-    } catch {}
-    return tmp0.sort((arg0, arg1) => {
-      try {
-        return fs.statSync(arg1).mtimeMs - fs.statSync(arg0).mtimeMs;
-      } catch {
-        return 0;
-      }
-    });
-  }
   migrateUserConfigIfNeeded() {
     if (!this.usesPersistentUserConfig()) {
       return;
@@ -246,39 +202,6 @@ class ProxyManager {
           this.log("迁移配置失败: " + tmp12);
         }
       }
-    }
-    const tmp1 = this.getDefaultSystemPromptFilePath();
-    if (!fs.existsSync(tmp1)) {
-      for (const tmp02 of this.findLegacySystemPromptCandidates()) {
-        try {
-          fs.copyFileSync(tmp02, tmp1);
-          this.log("已迁移系统提示词到持久目录");
-          break;
-        } catch {}
-      }
-    }
-    if (fs.existsSync(tmp0)) {
-      this.rewritePersistentEnvPaths(tmp0);
-    }
-  }
-  rewritePersistentEnvPaths(tmp0) {
-    if (!this.usesPersistentUserConfig() || !fs.existsSync(tmp0)) {
-      return;
-    }
-    const tmp1 = this.readEnvConfig();
-    const tmp2 = this.getDefaultSystemPromptFilePath();
-    let tmp3 = false;
-    if (tmp1.SYSTEM_PROMPT_OVERRIDE === "true") {
-      const tmp02 = (tmp1.SYSTEM_PROMPT_PATH || "").trim();
-      const tmp12 = tmp02 ? this.getResolvedSystemPromptPath(tmp1) : tmp2;
-      const tmp22 = path.normalize(tmp12);
-      if (tmp02 !== tmp22) {
-        tmp1.SYSTEM_PROMPT_PATH = tmp22;
-        tmp3 = true;
-      }
-    }
-    if (tmp3) {
-      this.writeEnvConfig(tmp1);
     }
   }
   onLog(tmp0) {
@@ -478,9 +401,6 @@ class ProxyManager {
       const tmp3 = tmp03.slice(tmp12 + 1).trim();
       tmp1[tmp22] = tmp3;
     }
-    if (tmp1.SYSTEM_PROMPT_PATH !== undefined) {
-      tmp1.SYSTEM_PROMPT_PATH = this.getSystemPromptConfigPath(tmp1);
-    }
     const _legacy = String.fromCharCode(90, 87, 72, 95);
     for (const _k of Object.keys(tmp1)) {
       if (_k.startsWith(_legacy)) {
@@ -492,34 +412,6 @@ class ProxyManager {
   stripProtocol(tmp0) {
     return tmp0.replace(/^https?:\/\//, "").replace(/\/+$/, "");
   }
-  normalizeSystemPromptPathValue(tmp0) {
-    const tmp1 = tmp0.trim();
-    if (!tmp1) {
-      return "./prompts/system-prompt.md";
-    }
-    if (!path.isAbsolute(tmp1)) {
-      return tmp1;
-    }
-    const tmp2 = path.normalize(tmp1);
-    const tmp3 = path.normalize(path.join(this.proxyRoot, "prompts", "system-prompt.md"));
-    if (tmp2 === tmp3) {
-      return "./prompts/system-prompt.md";
-    }
-    const tmp4 = this.findWorkspaceProxyRoot();
-    if (tmp4) {
-      const tmp02 = path.normalize(path.join(tmp4, "prompts", "system-prompt.md"));
-      if (tmp2 === tmp02) {
-        return "./prompts/system-prompt.md";
-      }
-    }
-    if (this.usesPersistentUserConfig()) {
-      const tmp5 = path.normalize(this.getDefaultSystemPromptFilePath());
-      if (tmp2 === tmp5) {
-        return tmp5;
-      }
-    }
-    return tmp1;
-  }
   getCompletionTimeoutMs(tmp0) {
     const tmp1 = Number.parseInt(String(tmp0.COMPLETION_TIMEOUT_MS || ""), 10);
     if (!Number.isInteger(tmp1) || tmp1 < 2000) {
@@ -527,33 +419,29 @@ class ProxyManager {
     }
     return Math.min(tmp1, 60000);
   }
-  getSystemPromptConfigPath(tmp0) {
-    const tmp1 = (tmp0?.SYSTEM_PROMPT_PATH || "").trim();
-    return this.normalizeSystemPromptPathValue(tmp1);
+  getDefaultSystemPromptFilePath() {
+    return path.join(this.proxyRoot, "prompts", "system-prompt.md");
+  }
+  normalizeSystemPromptPathValue(tmp0) {
+    const tmp1 = String(tmp0 || "").trim();
+    if (!tmp1) {
+      return this.getDefaultSystemPromptFilePath();
+    }
+    return path.isAbsolute(tmp1) ? tmp1 : path.resolve(this.proxyRoot, tmp1);
   }
   getResolvedSystemPromptPath(tmp0) {
-    const tmp1 = this.getSystemPromptConfigPath(tmp0);
-    if (path.isAbsolute(tmp1)) {
-      return tmp1;
-    }
-    const tmp2 = this.usesPersistentUserConfig() ? this.getUserConfigDir() : this.proxyRoot;
-    return path.normalize(path.join(tmp2, tmp1));
+    return this.normalizeSystemPromptPathValue(tmp0?.SYSTEM_PROMPT_PATH);
   }
   resolveEnvForProxySpawn(tmp0) {
-    const tmp1 = {
+    return {
       ...tmp0
     };
-    if (String(tmp1.SYSTEM_PROMPT_OVERRIDE || "").toLowerCase() === "true") {
-      tmp1.SYSTEM_PROMPT_PATH = this.getResolvedSystemPromptPath(tmp1);
-    }
-    return tmp1;
   }
   writeEnvConfig(tmp0) {
     const tmp1 = this.getEnvFilePath();
     const tmp2 = this.readEnvConfig();
     const tmp3 = new Set(["ANTHROPIC_API_HOST", "ANTHROPIC_API_KEY", "ANTHROPIC_API_PATH", "OPENAI_API_HOST", "OPENAI_API_KEY", "OPENAI_API_PATH", "HYBRID_PORT", "INFERENCE_PORT", "DEFAULT_MODEL", "MAX_TOKENS", "OPENAI_REASONING_EFFORT", "OPENAI_THINKING_ENABLED", "COMPLETION_TIMEOUT_MS", "SYSTEM_PROMPT_OVERRIDE", "SYSTEM_PROMPT_PATH", "BYOK1_ANTHROPIC_API_HOST", "BYOK1_ANTHROPIC_API_KEY", "BYOK1_ANTHROPIC_API_PATH", "BYOK1_OPENAI_API_HOST", "BYOK1_OPENAI_API_KEY", "BYOK1_OPENAI_API_PATH", "BYOK1_MODEL", "BYOK1_THINKING_EFFORT", "BYOK2_ANTHROPIC_API_HOST", "BYOK2_ANTHROPIC_API_KEY", "BYOK2_ANTHROPIC_API_PATH", "BYOK2_OPENAI_API_HOST", "BYOK2_OPENAI_API_KEY", "BYOK2_OPENAI_API_PATH", "BYOK2_MODEL", "BYOK2_THINKING_EFFORT"]);
     const tmp4 = Object.entries(tmp2).filter(([tmp02]) => !tmp3.has(tmp02) && /^[A-Za-z_][A-Za-z0-9_]*$/.test(tmp02)).map(([tmp02, tmp13]) => tmp02 + "=" + tmp13);
-    const tmp5 = this.getSystemPromptConfigPath(tmp0);
     const tmp6 = ["# Devin BYOK Bridge 配置（由扩展管理）"];
     const fn = (arg0, arg1) => {
       const tmp22 = tmp0[arg0 + "ANTHROPIC_API_HOST"] ? this.stripProtocol(tmp0[arg0 + "ANTHROPIC_API_HOST"]) : "";
@@ -599,11 +487,9 @@ class ProxyManager {
     tmp6.push("OPENAI_REASONING_EFFORT=" + (tmp12 || ""));
     tmp6.push("OPENAI_THINKING_ENABLED=" + (tmp0.OPENAI_THINKING_ENABLED === "true" || !!tmp11 ? "true" : "false"));
     tmp6.push("COMPLETION_TIMEOUT_MS=" + this.getCompletionTimeoutMs(tmp0).toString());
-    if (tmp0.SYSTEM_PROMPT_OVERRIDE) {
-      tmp6.push("SYSTEM_PROMPT_OVERRIDE=" + tmp0.SYSTEM_PROMPT_OVERRIDE);
-      const tmp13 = this.usesPersistentUserConfig() ? this.getResolvedSystemPromptPath(tmp0) : tmp5;
-      tmp6.push("SYSTEM_PROMPT_PATH=" + tmp13);
-    }
+    tmp6.push("", "# ─── 提示词覆盖 ───");
+    tmp6.push("SYSTEM_PROMPT_OVERRIDE=" + (tmp0.SYSTEM_PROMPT_OVERRIDE === "true" ? "true" : "false"));
+    tmp6.push("SYSTEM_PROMPT_PATH=" + this.getResolvedSystemPromptPath(tmp0));
     if (tmp4.length > 0) {
       tmp6.push("", ...tmp4);
     }
@@ -638,7 +524,12 @@ class ProxyManager {
       OPENAI_API_PATH: tmp0.BYOK1_OPENAI_API_PATH || tmp0.OPENAI_API_PATH || "",
       OPENAI_REASONING_EFFORT: Object.prototype.hasOwnProperty.call(tmp0, "OPENAI_REASONING_EFFORT") ? tmp0.OPENAI_REASONING_EFFORT : tmp0.BYOK1_THINKING_EFFORT || "",
       OPENAI_THINKING_ENABLED: tmp0.OPENAI_THINKING_ENABLED === "true" || !!tmp0.BYOK1_THINKING_EFFORT,
-      COMPLETION_TIMEOUT_MS: this.getCompletionTimeoutMs(tmp0)
+      COMPLETION_TIMEOUT_MS: this.getCompletionTimeoutMs(tmp0),
+      SYSTEM_PROMPT_OVERRIDE: tmp0.SYSTEM_PROMPT_OVERRIDE === "true",
+      SYSTEM_PROMPT_PATH: this.getResolvedSystemPromptPath(tmp0),
+      systemPromptOverride: tmp0.SYSTEM_PROMPT_OVERRIDE === "true",
+      systemPromptPath: this.getResolvedSystemPromptPath(tmp0),
+      systemPromptVersion: String(Date.now())
     };
     const tmp2 = Number.parseInt(String(tmp0.MAX_TOKENS || ""), 10);
     if (Number.isInteger(tmp2) && tmp2 > 0) {

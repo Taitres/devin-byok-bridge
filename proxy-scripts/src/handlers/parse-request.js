@@ -3,46 +3,18 @@ import path from "node:path";
 import { parseFields, getField, getAllFields } from "../proto.js";
 import { unwrapRequest } from "../connect.js";
 import { KNOWN_TOOL_NAMES, isAllowedToolName, normalizeToolInvocation } from "./tool-normalization.js";
-const SYSTEM_PROMPT_OVERRIDE = process.env.SYSTEM_PROMPT_OVERRIDE === "true";
-const SYSTEM_PROMPT_PATH = process.env.SYSTEM_PROMPT_PATH || "";
+import { getRuntimeConfig } from "./models.js";
+import { applySystemPromptOverride } from "./system-prompt.js";
 const DEBUG_UNKNOWN_FIELDS = process.env.DEBUG_UNKNOWN_FIELDS === "1";
 const DEBUG_EXPORT_SYSTEM_PROMPT = process.env.DEBUG_EXPORT_SYSTEM_PROMPT === "1";
 const DEBUG_SYSTEM_PROMPT_DUMP_PATH = process.env.DEBUG_SYSTEM_PROMPT_DUMP_PATH || "./debug/original-system-prompt.txt";
 const STRIP_UNSIGNED_THINKING = process.env.STRIP_UNSIGNED_THINKING !== "false";
 let _warnedUnsignedThinking = false;
-let _promptCache = {
-  content: "",
-  mtime: 0,
-  path: ""
-};
 let _promptDumpCache = {
   content: "",
   path: ""
 };
 const ANTHROPIC_TOOL_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
-function getCustomSystemPrompt() {
-  if (!SYSTEM_PROMPT_OVERRIDE || !SYSTEM_PROMPT_PATH) {
-    return "";
-  }
-  try {
-    const tmp0 = fs.statSync(SYSTEM_PROMPT_PATH);
-    if (_promptCache.path === SYSTEM_PROMPT_PATH && _promptCache.mtime === tmp0.mtimeMs) {
-      return _promptCache.content;
-    }
-    const tmp1 = fs.readFileSync(SYSTEM_PROMPT_PATH, "utf8").trim();
-    const tmp2 = {
-      content: tmp1,
-      mtime: tmp0.mtimeMs,
-      path: SYSTEM_PROMPT_PATH
-    };
-    _promptCache = tmp2;
-    console.log("  📝 Custom system prompt loaded (" + tmp1.length + " chars)");
-    return tmp1;
-  } catch (tmp0) {
-    console.error("  ❌ Failed to load custom system prompt: " + tmp0.message);
-    return "";
-  }
-}
 function dumpOriginalSystemPrompt(arg0) {
   if (!DEBUG_EXPORT_SYSTEM_PROMPT || !arg0) {
     return;
@@ -70,35 +42,6 @@ function dumpOriginalSystemPrompt(arg0) {
   } catch (tmp0) {
     console.error("  ❌ Failed to dump original system prompt: " + tmp0.message);
   }
-}
-const KEEP_SECTIONS = ["tool_calling", "making_code_changes", "debugging", "running_commands", "calling_external_apis", "communication", "workflows"];
-const KEEP_LINE_PATTERNS = [/^There will be an <ephemeral_message>/];
-function extractFunctionalSections(arg0) {
-  const tmp1 = [];
-  for (const tmp0 of KEEP_SECTIONS) {
-    const tmp02 = new RegExp("<" + tmp0 + ">[\\s\\S]*?</" + tmp0 + ">", "g");
-    let tmp12;
-    while ((tmp12 = tmp02.exec(arg0)) !== null) {
-      tmp1.push(tmp12[0]);
-    }
-    const tmp2 = "<" + tmp0 + " ";
-    const tmp3 = "</" + tmp0 + ">";
-    let tmp4 = arg0.indexOf(tmp2);
-    while (tmp4 !== -1) {
-      const tmp03 = arg0.indexOf(tmp3, tmp4);
-      if (tmp03 !== -1) {
-        tmp1.push(arg0.slice(tmp4, tmp03 + tmp3.length));
-      }
-      tmp4 = arg0.indexOf(tmp2, tmp4 + 1);
-    }
-  }
-  for (const tmp0 of arg0.split("\n")) {
-    const tmp02 = tmp0.trim();
-    if (KEEP_LINE_PATTERNS.some(arg02 => arg02.test(tmp02))) {
-      tmp1.push(tmp02);
-    }
-  }
-  return tmp1.join("\n\n");
 }
 function compactPromptText(arg0) {
   if (!arg0) {
@@ -468,7 +411,7 @@ function mergeConsecutiveMessages(arg0) {
   }
   return tmp1;
 }
-export { extractFunctionalSections, compactPromptText, sanitizeAnthropicMessages, sanitizeAnthropicToolId };
+export { compactPromptText, sanitizeAnthropicMessages, sanitizeAnthropicToolId };
 export function parseGetChatMessageRequest(arg0, arg1) {
   const tmp2 = unwrapRequest(arg0, arg1);
   const tmp3 = parseFields(tmp2);
@@ -494,15 +437,6 @@ export function parseGetChatMessageRequest(arg0, arg1) {
   const tmp6 = getField(tmp3, 2, 2);
   let tmp7 = tmp6 ? tmp6.value.toString("utf8") : "";
   dumpOriginalSystemPrompt(tmp7);
-  if (SYSTEM_PROMPT_OVERRIDE) {
-    const tmp0 = getCustomSystemPrompt();
-    if (tmp0) {
-      const tmp02 = tmp7.length;
-      const tmp1 = compactPromptText(extractFunctionalSections(tmp7));
-      tmp7 = compactPromptText(tmp1 ? tmp0 + "\n\n" + tmp1 : tmp0);
-      console.log("  🔀 System prompt: custom " + tmp0.length + " + preserved " + tmp1.length + " chars (was " + tmp02 + ")");
-    }
-  }
   const tmp8 = getField(tmp3, 21, 2);
   const tmp9 = tmp8 ? tmp8.value.toString("utf8") : "";
   const tmp10 = getAllFields(tmp3, 3, 2);
@@ -512,7 +446,7 @@ export function parseGetChatMessageRequest(arg0, arg1) {
       tmp7 += (tmp7 ? "\n\n" : "") + tmp0.prompt;
     }
   }
-  tmp7 = compactPromptText(tmp7);
+  tmp7 = applySystemPromptOverride(compactPromptText(tmp7), getRuntimeConfig());
   let tmp12 = "agent";
   const tmp13 = tmp11.filter(arg02 => arg02.source !== SOURCE.SYSTEM_PROMPT && arg02.source !== SOURCE.UNSPECIFIED);
   if (tmp13.length > 0) {

@@ -1,9 +1,9 @@
 import http2 from "node:http2";
-import https from "node:https";
 import { handleGetChatMessage } from "./handlers/chat.js";
-import { handleGetCompletions } from "./handlers/completions.js";
+import { shouldInterceptByokChat } from "./handlers/byok-slots.js";
 import { getProviderConfig, getRuntimeConfig, setRuntimeConfig } from "./handlers/models.js";
 import { getLoopbackListenHosts, loopbackApiUrl } from "./net-utils.js";
+import { sanitizeUpstreamResponseHeaders, writeConnectStreamErrorHttp2, streamHeadersHttp2 } from "./connect.js";
 function parsePortEnv(arg0, arg1) {
   const tmp2 = process.env[arg0];
   const tmp3 = parseInt(String(tmp2 ?? ""), 10);
@@ -17,10 +17,25 @@ const PORT = parsePortEnv("INFERENCE_PORT", 3001);
 const BIND_HOST = process.env.BIND_HOST || "127.0.0.1";
 const UPSTREAM = "inference.codeium.com";
 const INTERCEPT_PATHS = new Set(["/exa.api_server_pb.ApiServerService/GetChatMessage", "/exa.api_server_pb.ApiServerService/GetCompletions"]);
+const STREAMING_PATHS = INTERCEPT_PATHS;
 let reqCount = 0;
+let upstreamSession = null;
 const HOP_BY_HOP_RESPONSE_HEADERS = new Set(["connection", "keep-alive", "proxy-authenticate", "proxy-authorization", "te", "trailer", "transfer-encoding", "upgrade"]);
 function now() {
   return new Date().toISOString().slice(11, 23);
+}
+function getUpstreamSession() {
+  if (upstreamSession && !upstreamSession.destroyed && !upstreamSession.closed) {
+    return upstreamSession;
+  }
+  upstreamSession = http2.connect("https://" + UPSTREAM);
+  upstreamSession.on("error", arg0 => {
+    console.error("[" + now() + "] inference upstream session error: " + arg0.message);
+  });
+  upstreamSession.on("close", () => {
+    upstreamSession = null;
+  });
+  return upstreamSession;
 }
 function toHttp2ResponseHeaders(arg0, tmp1 = {}) {
   const tmp2 = {
@@ -122,70 +137,85 @@ function handleRuntimeConfigStream(arg0, arg1) {
   });
 }
 function forwardToCodeium(arg0, arg1, arg2, arg3, arg4) {
-  const tmp5 = {};
+  const tmp5 = STREAMING_PATHS.has(arg3);
+  const tmp6 = {};
   for (const [tmp02, tmp1] of Object.entries(arg2)) {
     if (tmp02.startsWith(":") || tmp02 === "host") {
       continue;
     }
-    tmp5[tmp02] = tmp1;
+    tmp6[tmp02] = tmp1;
   }
-  tmp5.host = UPSTREAM;
-  tmp5["content-length"] = arg0.length;
-  let tmp6 = false;
-  const tmp7 = {
-    hostname: UPSTREAM,
-    port: 443,
-    path: arg3,
-    method: "POST",
-    headers: tmp5
-  };
-  const tmp8 = https.request(tmp7, arg02 => {
+  tmp6["content-length"] = arg0.length;
+  let tmp7 = false;
+  let tmp8;
+  try {
+    tmp8 = getUpstreamSession().request({
+      ":method": "POST",
+      ":path": arg3,
+      ":authority": UPSTREAM,
+      ...tmp6
+    });
+  } catch (tmp02) {
+    console.error("  [#" + arg4 + "] ❌ upstream error: " + tmp02.message);
+    if (tmp5) {
+      writeConnectStreamErrorHttp2(arg1, "unavailable", "Upstream error: " + tmp02.message, toHttp2ResponseHeaders);
+    } else if (!arg1.destroyed) {
+      try {
+        arg1.respond({
+          ":status": 502
+        });
+        arg1.end();
+      } catch {}
+    }
+    return;
+  }
+  tmp8.on("response", arg02 => {
+    tmp7 = true;
     const tmp1 = {
-      ":status": arg02.statusCode
+      ":status": arg02[":status"]
     };
     const tmp2 = tmp1;
-    for (const [tmp02, tmp12] of Object.entries(arg02.headers)) {
-      const tmp03 = tmp02.toLowerCase();
-      if (HOP_BY_HOP_RESPONSE_HEADERS.has(tmp03) || tmp03.startsWith(":")) {
+    for (const [tmp03, tmp12] of Object.entries(arg02)) {
+      if (tmp03.startsWith(":")) {
         continue;
       }
       tmp2[tmp03] = tmp12;
     }
+    const tmp3 = sanitizeUpstreamResponseHeaders(tmp2, tmp5);
     if (!arg1.destroyed) {
       try {
-        arg1.respond(tmp2);
-        tmp6 = true;
+        arg1.respond(tmp3);
       } catch {}
     }
-    arg02.on("data", arg03 => {
-      if (!arg1.destroyed) {
-        arg1.write(arg03);
-      }
-    });
-    arg02.on("end", () => {
-      if (!arg1.destroyed) {
-        arg1.end();
-      }
-      console.log("  [#" + arg4 + "] ✅ forwarded");
-    });
-    arg02.on("error", arg03 => {
-      console.error("  [#" + arg4 + "] ❌ fwd error: " + arg03.message);
-      if (!arg1.destroyed) {
-        arg1.end();
-      }
-    });
+  });
+  tmp8.on("data", arg02 => {
+    if (!arg1.destroyed) {
+      try {
+        arg1.write(arg02);
+      } catch {}
+    }
+  });
+  tmp8.on("end", () => {
+    if (!arg1.destroyed) {
+      arg1.end();
+    }
+    console.log("  [#" + arg4 + "] ✅ forwarded (h2" + (tmp5 ? " stream" : "") + ")");
   });
   tmp8.on("error", arg02 => {
     console.error("  [#" + arg4 + "] ❌ upstream error: " + arg02.message);
     if (!arg1.destroyed) {
-      if (!tmp6) {
+      if (!tmp7 && tmp5) {
+        writeConnectStreamErrorHttp2(arg1, "unavailable", "Upstream error: " + arg02.message, toHttp2ResponseHeaders);
+      } else {
         try {
-          arg1.respond({
-            ":status": 502
-          });
+          arg1.end();
         } catch {}
       }
-      arg1.end();
+    }
+  });
+  arg1.on("close", () => {
+    if (!tmp8.destroyed) {
+      tmp8.close();
     }
   });
   tmp8.end(arg0);
@@ -210,14 +240,14 @@ function buildFakeReqRes(arg0, arg1) {
       }
       tmp5 = true;
       this.headersSent = true;
-      const tmp22 = toHttp2ResponseHeaders(tmp02, tmp1);
+      const tmp22 = toHttp2ResponseHeaders(tmp02, sanitizeUpstreamResponseHeaders(tmp1, true));
       try {
         arg0.respond(tmp22);
       } catch {}
     },
     write(tmp02) {
       if (!tmp5) {
-        this.writeHead(200);
+        this.writeHead(200, streamHeadersHttp2());
       }
       if (!arg0.destroyed) {
         try {
@@ -227,7 +257,7 @@ function buildFakeReqRes(arg0, arg1) {
     },
     end(tmp02) {
       if (!tmp5) {
-        this.writeHead(200);
+        this.writeHead(200, streamHeadersHttp2());
       }
       this.writableEnded = true;
       if (!arg0.destroyed) {
@@ -248,16 +278,12 @@ function buildFakeReqRes(arg0, arg1) {
   };
   return tmp7;
 }
-function adaptStreamForHandler(arg0, arg1, arg2, arg3) {
+function adaptStreamForHandler(arg0, arg1, arg2) {
   const {
     fakeReq: tmp4,
     fakeRes: tmp5
   } = buildFakeReqRes(arg1, arg2);
-  if (arg3 === "completions") {
-    handleGetCompletions(tmp4, tmp5, arg0);
-  } else {
-    handleGetChatMessage(tmp4, tmp5, arg0);
-  }
+  handleGetChatMessage(tmp4, tmp5, arg0);
 }
 const server = http2.createServer();
 function attachInferenceStreamHandler(arg0) {
@@ -283,11 +309,10 @@ function attachInferenceStreamHandler(arg0) {
     arg02.on("end", () => {
       const tmp02 = Buffer.concat(tmp7);
       console.log("[" + now() + "] #" + tmp2 + " " + tmp6 + " (" + tmp02.length + "b)");
-      if (INTERCEPT_PATHS.has(tmp4)) {
-        const tmp03 = tmp6 === "GetCompletions" ? "completions" : "chat";
-        console.log("  ⚡ → API (" + tmp03 + ")");
+      if (tmp4 === "/exa.api_server_pb.ApiServerService/GetChatMessage" && shouldInterceptByokChat(tmp02, arg1)) {
+        console.log("  ⚡ → BYOK (inline chat)");
         try {
-          adaptStreamForHandler(tmp02, arg02, arg1, tmp03);
+          adaptStreamForHandler(tmp02, arg02, arg1);
         } catch (tmp04) {
           console.error("  ❌ Handler error: " + tmp04.message);
           if (!arg02.destroyed) {
@@ -302,6 +327,9 @@ function attachInferenceStreamHandler(arg0) {
             arg02.end(JSON.stringify(tmp05));
           }
         }
+      } else if (INTERCEPT_PATHS.has(tmp4)) {
+        console.log("  → " + UPSTREAM + tmp4);
+        forwardToCodeium(tmp02, arg02, arg1, tmp4, tmp2);
       } else {
         console.log("  → " + UPSTREAM + tmp4);
         forwardToCodeium(tmp02, arg02, arg1, tmp4, tmp2);
@@ -328,9 +356,9 @@ function printInferenceReady() {
   const tmp02 = getLoopbackListenHosts(BIND_HOST);
   console.log("\n⚡ Devin BYOK Bridge inference on " + loopbackApiUrl(PORT));
   console.log("   Bind hosts: " + tmp02.join(", "));
-  console.log("\n   GetChatMessage  → Anthropic API (inline AI edit)");
-  console.log("   GetCompletions → Anthropic API (code completion)");
-  console.log("   Everything else         → " + UPSTREAM + "\n");
+  console.log("\n   GetChatMessage (BYOK models) → your API key / gateway");
+  console.log("   GetCompletions / other chat   → " + UPSTREAM);
+  console.log("   Everything else               → " + UPSTREAM + "\n");
 }
 const tmp0 = getLoopbackListenHosts(BIND_HOST);
 if (tmp0.length === 1) {
